@@ -21,7 +21,8 @@ RowRenderer.prototype.init = function(gridOptions, columnModel, gridOptionsWrapp
     this.eParentOfRows = eParentOfRows;
 
     this.cellRendererMap = {
-        'group': groupCellRendererFactory(gridOptionsWrapper, selectionRendererFactory)
+        'group': groupCellRendererFactory(gridOptionsWrapper, selectionRendererFactory),
+        'expand': gridOptions.expandRow
     };
 
     // map of row ids to row objects. keeps track of which elements
@@ -327,13 +328,35 @@ RowRenderer.prototype.insertRow = function(node, rowIndex, mainRowWidth) {
         }
 
     } else {
-
-        columns.forEach(function(column, index) {
-            var firstCol = index === 0;
-            var data = that.getDataForNode(node);
-            var valueGetter = that.createValueGetter(data, column.colDef, node);
-            that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
-        });
+        if (this.gridOptionsWrapper.isDoInternalExpanding()) {
+            if (node.first) {
+                var params = {
+                    node: node.parent,
+                    data: node.parent.data,
+                    rowIndex: rowIndex,
+                    api: this.gridOptionsWrapper.getApi()
+                };
+                var eGroupRow = that.cellRendererMap['expand'](params);
+                eMainRow.style.height = (20 * node.parent.rows) + 'px';
+                eMainRow.appendChild(eGroupRow);
+            }
+            if (node.group)
+            {
+                columns.forEach(function(column, index) {
+                    var firstCol = index === 0;
+                    var data = that.getDataForNode(node);
+                    var valueGetter = that.createValueGetter(data, column.colDef, node);
+                    that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
+                });
+            }
+        } else {
+            columns.forEach(function(column, index) {
+                var firstCol = index === 0;
+                var data = that.getDataForNode(node);
+                var valueGetter = that.createValueGetter(data, column.colDef, node);
+                that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
+            });
+        }
     }
 
     //try compiling as we insert rows

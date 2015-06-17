@@ -1,4 +1,5 @@
 var groupCreator = require('./groupCreator');
+var expandCreator = require('./ExpandCreator');
 var utils = require('./utils');
 var constants = require('./constants');
 
@@ -287,6 +288,16 @@ InMemoryRowController.prototype.doGrouping = function() {
 };
 
 // private
+InMemoryRowController.prototype.doExpanding = function() {
+    var rowsAfterGroup;
+    if (this.gridOptionsWrapper.isDoInternalExpanding()) {
+        rowsAfterGroup = expandCreator.group(this.allRows);
+    } else {
+        rowsAfterGroup = this.allRows;
+    }
+    this.rowsAfterGroup = rowsAfterGroup;
+};
+// private
 InMemoryRowController.prototype.doFilter = function() {
     var quickFilterPresent = this.angularGrid.getQuickFilter() !== null;
     var advancedFilterPresent = this.filterManager.isFilterPresent();
@@ -369,6 +380,8 @@ InMemoryRowController.prototype.setAllRows = function(rows, firstId) {
 
     // aggregate here, so filters have the agg data ready
     this.doGrouping();
+    // process here the expanded
+    this.doExpanding();
 };
 
 // add in index - this is used by the selectionController - so quick

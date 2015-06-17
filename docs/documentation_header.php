@@ -299,6 +299,12 @@
                     <a class="sidebarLink" href="/example-file-browser/index.php">File Browser</a>
                 <?php } ?>
 
+                <?php if ($key == "Row Expanded") { ?>
+                    <span class="sidebarLinkSelected">Row Expanded</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/example-row-expanded/index.php">Row Expanded</a>
+                <?php } ?>
+
                 <?php if ($key == "No Angular") { ?>
                     <span class="sidebarLinkSelected">No AngularJS</span>
                 <?php } else { ?>
