@@ -1,5 +1,6 @@
 var DEFAULT_ROW_HEIGHT = 30;
 
+var constants = require('./constants');
 function GridOptionsWrapper(gridOptions) {
     this.gridOptions = gridOptions;
     this.setupDefaults();
@@ -9,11 +10,13 @@ function isTrue(value) {
     return value === true || value === 'true';
 }
 
+GridOptionsWrapper.prototype.isSuppressVerticalScroll = function() { return isTrue(this.gridOptions.suppressVerticalScroll); };
 GridOptionsWrapper.prototype.isRowSelection = function() { return this.gridOptions.rowSelection === "single" || this.gridOptions.rowSelection === "multiple"; };
 GridOptionsWrapper.prototype.isRowDeselection = function() { return isTrue(this.gridOptions.rowDeselection); };
 GridOptionsWrapper.prototype.isRowSelectionMulti = function() { return this.gridOptions.rowSelection === 'multiple'; };
 GridOptionsWrapper.prototype.getContext = function() { return this.gridOptions.context; };
 GridOptionsWrapper.prototype.isVirtualPaging = function() { return isTrue(this.gridOptions.virtualPaging); };
+GridOptionsWrapper.prototype.isShowToolPanel = function() { return isTrue(this.gridOptions.showToolPanel); };
 GridOptionsWrapper.prototype.isRowsAlreadyGrouped = function() { return isTrue(this.gridOptions.rowsAlreadyGrouped); };
 GridOptionsWrapper.prototype.isRowsAlreadyExpanded = function() { return isTrue(this.gridOptions.rowsAlreadyExpanded); };
 GridOptionsWrapper.prototype.isGroupSelectsChildren = function() { return isTrue(this.gridOptions.groupSelectsChildren); };
@@ -30,10 +33,7 @@ GridOptionsWrapper.prototype.getRowClass = function() { return this.gridOptions.
 GridOptionsWrapper.prototype.getGridOptions = function() { return this.gridOptions; };
 GridOptionsWrapper.prototype.getHeaderCellRenderer = function() { return this.gridOptions.headerCellRenderer; };
 GridOptionsWrapper.prototype.getApi = function() { return this.gridOptions.api; };
-GridOptionsWrapper.prototype.isEnableSorting = function() { return this.gridOptions.enableSorting; };
 GridOptionsWrapper.prototype.isEnableColResize = function() { return this.gridOptions.enableColResize; };
-GridOptionsWrapper.prototype.isEnableFilter = function() { return this.gridOptions.enableFilter; };
-GridOptionsWrapper.prototype.getColWidth = function() { return this.gridOptions.colWidth; };
 GridOptionsWrapper.prototype.getGroupDefaultExpanded = function() { return this.gridOptions.groupDefaultExpanded; };
 GridOptionsWrapper.prototype.getGroupKeys = function() { return this.gridOptions.groupKeys; };
 GridOptionsWrapper.prototype.getGroupAggFunction = function() { return this.gridOptions.groupAggFunction; };
@@ -49,12 +49,27 @@ GridOptionsWrapper.prototype.getModelUpdated = function() { return this.gridOpti
 GridOptionsWrapper.prototype.getCellClicked = function() { return this.gridOptions.cellClicked; };
 GridOptionsWrapper.prototype.getCellDoubleClicked = function() { return this.gridOptions.cellDoubleClicked; };
 GridOptionsWrapper.prototype.getCellValueChanged = function() { return this.gridOptions.cellValueChanged; };
+GridOptionsWrapper.prototype.getCellFocused = function() { return this.gridOptions.cellFocused; };
 GridOptionsWrapper.prototype.getRowSelected = function() { return this.gridOptions.rowSelected; };
 GridOptionsWrapper.prototype.getSelectionChanged = function() { return this.gridOptions.selectionChanged; };
 GridOptionsWrapper.prototype.getVirtualRowRemoved = function() { return this.gridOptions.virtualRowRemoved; };
 GridOptionsWrapper.prototype.getDatasource = function() { return this.gridOptions.datasource; };
 GridOptionsWrapper.prototype.getReady = function() { return this.gridOptions.ready; };
 GridOptionsWrapper.prototype.getRowBuffer = function() { return this.gridOptions.rowBuffer; };
+
+GridOptionsWrapper.prototype.getColWidth = function() {
+    if (typeof this.gridOptions.colWidth !== 'number' ||  this.gridOptions.colWidth < constants.MIN_COL_WIDTH) {
+        return 200;
+    } else  {
+        return this.gridOptions.colWidth;
+    }
+};
+
+GridOptionsWrapper.prototype.isEnableSorting = function() { return isTrue(this.gridOptions.enableSorting) || isTrue(this.gridOptions.enableServerSideSorting); };
+GridOptionsWrapper.prototype.isEnableServerSideSorting = function() { return isTrue(this.gridOptions.enableServerSideSorting); };
+
+GridOptionsWrapper.prototype.isEnableFilter = function() { return isTrue(this.gridOptions.enableFilter) || isTrue(this.gridOptions.enableServerSideFilter); };
+GridOptionsWrapper.prototype.isEnableServerSideFilter = function() { return this.gridOptions.enableServerSideFilter; };
 
 GridOptionsWrapper.prototype.setSelectedRows = function(newSelectedRows) {
     return this.gridOptions.selectedRows = newSelectedRows;

@@ -271,6 +271,12 @@
                     <a class="sidebarLink" href="/angular-grid-no-scrolls/index.php">No Scrolling</a>
                 <?php } ?>
 
+                <?php if ($key == "No Vertical Scroll") { ?>
+                    <span class="sidebarLinkSelected">No Vertical Scroll</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/angular-grid-no-vertical-scroll/index.php">No Vertical Scroll</a>
+                <?php } ?>
+
                 <?php if ($key == "API") { ?>
                     <span class="sidebarLinkSelected">API</span>
                 <?php } else { ?>
@@ -297,6 +303,12 @@
                     <span class="sidebarLinkSelected">File Browser</span>
                 <?php } else { ?>
                     <a class="sidebarLink" href="/example-file-browser/index.php">File Browser</a>
+                <?php } ?>
+
+                <?php if ($key == "Expressions and Context") { ?>
+                    <span class="sidebarLinkSelected">Expressions and Context</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/example-expressions-and-context/index.php">Expressions and Context</a>
                 <?php } ?>
 
                 <?php if ($key == "Row Expanded") { ?>

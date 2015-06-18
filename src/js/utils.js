@@ -1,5 +1,8 @@
 function Utils() {}
 
+var FUNCTION_STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+var FUNCTION_ARGUMENT_NAMES = /([^\s,]+)/g;
+
 Utils.prototype.iterateObject = function(object, callback) {
     var keys = Object.keys(object);
     for (var i = 0; i<keys.length; i++) {
@@ -7,6 +10,36 @@ Utils.prototype.iterateObject = function(object, callback) {
         var value = object[key];
         callback(key, value);
     }
+};
+
+Utils.prototype.map = function(array, callback) {
+    var result = [];
+    for (var i = 0; i<array.length; i++) {
+        var item = array[i];
+        var mappedItem = callback(item);
+        result.push(mappedItem);
+    }
+    return result;
+};
+
+Utils.prototype.getFunctionParameters = function(func) {
+    var fnStr = func.toString().replace(FUNCTION_STRIP_COMMENTS, '');
+    var result = fnStr.slice(fnStr.indexOf('(')+1, fnStr.indexOf(')')).match(FUNCTION_ARGUMENT_NAMES);
+    if (result === null) {
+        return [];
+    } else {
+        return result;
+    }
+};
+
+Utils.prototype.toStrings = function(array) {
+    return this.map(array, function (item) {
+        if (item === undefined || item === null || !item.toString) {
+            return null;
+        } else {
+            return item.toString();
+        }
+    });
 };
 
 /*
@@ -164,29 +197,35 @@ Utils.prototype.querySelectorAll_replaceCssClass = function(eParent, selector, c
     }
 };
 
+Utils.prototype.addOrRemoveCssClass = function(element, className, addOrRemove) {
+    if (addOrRemove) {
+        this.addCssClass(element, className);
+    } else {
+        this.removeCssClass(element, className);
+    }
+};
+
 Utils.prototype.addCssClass = function(element, className) {
-    var oldClasses = element.className;
-    if (oldClasses) {
-        if (oldClasses.indexOf(className) >= 0) {
-            return;
+    if (element.className && element.className.length > 0) {
+        var cssClasses = element.className.split(' ');
+        if (cssClasses.indexOf(className) < 0) {
+            cssClasses.push(className);
+            element.className = cssClasses.join(' ');
         }
-        element.className = oldClasses + " " + className;
     } else {
         element.className = className;
     }
 };
 
 Utils.prototype.removeCssClass = function(element, className) {
-    var oldClasses = element.className;
-    if (oldClasses.indexOf(className) < 0) {
-        return;
+    if (element.className && element.className.length > 0) {
+        var cssClasses = element.className.split(' ');
+        var index = cssClasses.indexOf(className);
+        if (index >= 0) {
+            cssClasses.splice(index, 1);
+            element.className = cssClasses.join(' ');
+        }
     }
-    var newClasses = oldClasses.replace(" " + className, "");
-    newClasses = newClasses.replace(className + " ", "");
-    if (newClasses == className) {
-        newClasses = "";
-    }
-    element.className = newClasses;
 };
 
 Utils.prototype.removeFromArray = function(array, object) {

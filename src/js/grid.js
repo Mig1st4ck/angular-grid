@@ -9,11 +9,12 @@ var SelectionRendererFactory = require('./selectionRendererFactory');
 var ColumnController = require('./columnController');
 var RowRenderer = require('./rowRenderer');
 var HeaderRenderer = require('./headerRenderer');
-var InMemoryRowController = require('./inMemoryRowController');
-var VirtualPageRowController = require('./virtualPageRowController');
-var PaginationController = require('./paginationController');
+var InMemoryRowController = require('./rowControllers/inMemoryRowController');
+var VirtualPageRowController = require('./rowControllers/virtualPageRowController');
+var PaginationController = require('./rowControllers/paginationController');
 var ExpressionService = require('./expressionService');
 var TemplateService = require('./templateService');
+var ToolPanel = require('./toolPanel/toolPanel');
 
 function Grid(eGridDiv, gridOptions, $scope, $compile, quickFilterOnScope) {
 
@@ -27,6 +28,10 @@ function Grid(eGridDiv, gridOptions, $scope, $compile, quickFilterOnScope) {
         eGridDiv.innerHTML = template;
     } else {
         eGridDiv.innerHTML = templateNoScrolls;
+    }
+
+    if (this.gridOptionsWrapper.isSuppressVerticalScroll() && !this.gridOptionsWrapper.isDontUseScrolls()) {
+        utils.addCssClass(eGridDiv, 'ag-no-vertical-scroll');
     }
 
     var that = this;
@@ -100,6 +105,7 @@ Grid.prototype.createAndWireBeans = function($scope, $compile, eGridDiv, useScro
     var virtualPageRowController = new VirtualPageRowController();
     var expressionService = new ExpressionService();
     var templateService = new TemplateService();
+    var toolPanel = new ToolPanel();
 
     var columnModel = columnController.getModel();
 
@@ -108,14 +114,23 @@ Grid.prototype.createAndWireBeans = function($scope, $compile, eGridDiv, useScro
     selectionController.init(this, this.eParentOfRows, gridOptionsWrapper, $scope, rowRenderer);
     filterManager.init(this, gridOptionsWrapper, $compile, $scope, expressionService, columnModel);
     selectionRendererFactory.init(this, selectionController);
-    columnController.init(this, selectionRendererFactory, gridOptionsWrapper);
+    columnController.init(this, selectionRendererFactory, gridOptionsWrapper, expressionService);
     rowRenderer.init(gridOptions, columnModel, gridOptionsWrapper, eGridDiv, this,
         selectionRendererFactory, $compile, $scope, selectionController, expressionService, templateService,
         this.eParentOfRows);
     headerRenderer.init(gridOptionsWrapper, columnController, columnModel, eGridDiv, this, filterManager,
         $scope, $compile, expressionService);
     inMemoryRowController.init(gridOptionsWrapper, columnModel, this, filterManager, $scope, expressionService);
-    virtualPageRowController.init(rowRenderer);
+    virtualPageRowController.init(rowRenderer, gridOptionsWrapper, this);
+
+    if (this.eToolPanelContainer) {
+        if (gridOptionsWrapper.isShowToolPanel()) {
+            toolPanel.init(this.eToolPanelContainer, columnController);
+            this.eRoot.style.marginRight = '200px';
+        } else {
+            this.eToolPanelContainer.style.layout = 'none';
+        }
+    }
 
     // this is a child bean, get a reference and pass it on
     // CAN WE DELETE THIS? it's done in the setDatasource section
@@ -235,6 +250,11 @@ Grid.prototype.onQuickFilterChanged = function(newFilter) {
         newFilter = null;
     }
     if (this.quickFilter !== newFilter) {
+        if (this.gridOptionsWrapper.isVirtualPaging()) {
+            console.warn('ag-grid: cannot do quick filtering when doing virtual paging');
+            return;
+        }
+
         //want 'null' to mean to filter, so remove undefined and empty string
         if (newFilter === undefined || newFilter === "") {
             newFilter = null;
@@ -248,8 +268,15 @@ Grid.prototype.onQuickFilterChanged = function(newFilter) {
 };
 
 Grid.prototype.onFilterChanged = function() {
-    this.updateModelAndRefresh(constants.STEP_FILTER);
     this.headerRenderer.updateFilterIcons();
+    if (this.gridOptionsWrapper.isEnableServerSideFilter()) {
+        // if doing server side filtering, changing the sort has the impact
+        // of resetting the datasource
+        this.setDatasource();
+    } else {
+        // if doing in memory filtering, we just update the in memory data
+        this.updateModelAndRefresh(constants.STEP_FILTER);
+    }
 };
 
 Grid.prototype.onRowClicked = function(event, rowIndex, node) {
@@ -427,7 +454,7 @@ Grid.prototype.ensureColIndexVisible = function(index) {
         return;
     }
 
-    var columns = this.columnModel.getVisibleColumns();
+    var columns = this.columnModel.getDisplayedColumns();
     if (typeof index !== 'number' || index < 0 || index >= columns.length) {
         console.warn('invalid col index for ensureColIndexVisible: ' + index
             + ', should be between 0 and ' + (columns.length - 1));
@@ -472,6 +499,10 @@ Grid.prototype.ensureColIndexVisible = function(index) {
         this.eBodyViewport.scrollLeft = newScrollPosition;
     }
     // otherwise, col is already in view, so do nothing
+};
+
+Grid.prototype.getFilterModel = function() {
+    return this.filterManager.getFilterModel();
 };
 
 Grid.prototype.addApi = function() {
@@ -558,6 +589,10 @@ Grid.prototype.addApi = function() {
             that.rowRenderer.refreshGroupRows();
         },
         sizeColumnsToFit: function() {
+            if (that.gridOptionsWrapper.isDontUseScrolls()) {
+                console.warn('ag-grid: sizeColumnsToFit does not work when dontUseScrolls=true');
+                return;
+            }
             var availableWidth = that.eBody.clientWidth;
             var scrollShowing = that.eBodyViewport.clientHeight < that.eBodyViewport.scrollHeight;
             if (scrollShowing) {
@@ -578,13 +613,13 @@ Grid.prototype.addApi = function() {
             return that.selectionController.getBestCostNodeSelection();
         },
         ensureColIndexVisible: function(index) {
-            return that.ensureColIndexVisible(index);
+            that.ensureColIndexVisible(index);
         },
         ensureIndexVisible: function(index) {
-            return that.ensureIndexVisible(index);
+            that.ensureIndexVisible(index);
         },
         ensureNodeVisible: function(comparator) {
-            return that.ensureNodeVisible(comparator);
+            that.ensureNodeVisible(comparator);
         },
         forEachInMemory: function(callback) {
             that.rowModel.forEachInMemory(callback);
@@ -610,10 +645,25 @@ Grid.prototype.addApi = function() {
             that.filterManager.setFilterModel(model);
         },
         getFilterModel: function() {
-            return that.filterManager.getFilterModel();
+            return that.getFilterModel();
+        },
+        getFocusedCell: function() {
+            return that.rowRenderer.getFocusedCell();
+        },
+        setFocusedCell: function(rowIndex, colIndex) {
+            that.setFocusedCell(rowIndex, colIndex);
         }
     };
     this.gridOptions.api = api;
+};
+
+Grid.prototype.setFocusedCell = function(rowIndex, colIndex) {
+    this.ensureIndexVisible(rowIndex);
+    this.ensureColIndexVisible(colIndex);
+    var that = this;
+    setTimeout( function() {
+        that.rowRenderer.setFocusedCell(rowIndex, colIndex);
+    }, 10);
 };
 
 Grid.prototype.getSortModel = function() {
@@ -642,6 +692,10 @@ Grid.prototype.getSortModel = function() {
 };
 
 Grid.prototype.setSortModel = function(sortModel) {
+    if (!this.gridOptionsWrapper.isEnableSorting()) {
+        console.warn('ag-grid: You are setting the sort model on a grid that does not have sorting enabled');
+        return;
+    }
     // first up, clear any previous sort
     var sortModelProvided = sortModel!==null && sortModel!==undefined && sortModel.length>0;
     var allColumns = this.columnModel.getAllColumns();
@@ -671,8 +725,19 @@ Grid.prototype.setSortModel = function(sortModel) {
         }
     }
 
+    this.onSortingChanged();
+};
+
+Grid.prototype.onSortingChanged = function() {
     this.headerRenderer.updateSortIcons();
-    this.updateModelAndRefresh(constants.STEP_SORT);
+    if (this.gridOptionsWrapper.isEnableServerSideSorting()) {
+        // if doing server side sorting, changing the sort has the impact
+        // of resetting the datasource
+        this.setDatasource();
+    } else {
+        // if doing in memory sorting, we just update the in memory data
+        this.updateModelAndRefresh(constants.STEP_SORT);
+    }
 };
 
 Grid.prototype.addVirtualRowListener = function(rowIndex, callback) {
@@ -731,6 +796,7 @@ Grid.prototype.findAllElements = function(eGridDiv) {
         this.eHeader = eGridDiv.querySelector(".ag-header");
         this.eHeaderContainer = eGridDiv.querySelector(".ag-header-container");
         this.eLoadingPanel = eGridDiv.querySelector('.ag-loading-panel');
+        this.eToolPanelContainer = eGridDiv.querySelector('.ag-tool-panel-container');
         // for scrolls, all rows live in eBody (containing pinned and normal body)
         this.eParentOfRows = this.eBody;
         this.ePagingPanel = eGridDiv.querySelector('.ag-paging-panel');
