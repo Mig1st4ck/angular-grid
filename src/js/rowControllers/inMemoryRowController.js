@@ -1,4 +1,5 @@
 var groupCreator = require('./../groupCreator');
+var expandCreator = require('./../expandCreator');
 var utils = require('./../utils');
 var constants = require('./../constants');
 
