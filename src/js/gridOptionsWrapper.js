@@ -10,7 +10,6 @@ function isTrue(value) {
     return value === true || value === 'true';
 }
 
-GridOptionsWrapper.prototype.isSuppressVerticalScroll = function() { return isTrue(this.gridOptions.suppressVerticalScroll); };
 GridOptionsWrapper.prototype.isRowSelection = function() { return this.gridOptions.rowSelection === "single" || this.gridOptions.rowSelection === "multiple"; };
 GridOptionsWrapper.prototype.isRowDeselection = function() { return isTrue(this.gridOptions.rowDeselection); };
 GridOptionsWrapper.prototype.isRowSelectionMulti = function() { return this.gridOptions.rowSelection === 'multiple'; };
@@ -25,12 +24,12 @@ GridOptionsWrapper.prototype.isSuppressRowClickSelection = function() { return i
 GridOptionsWrapper.prototype.isSuppressCellSelection = function() { return isTrue(this.gridOptions.suppressCellSelection); };
 GridOptionsWrapper.prototype.isSuppressUnSort = function() { return isTrue(this.gridOptions.suppressUnSort); };
 GridOptionsWrapper.prototype.isSuppressMultiSort = function() { return isTrue(this.gridOptions.suppressMultiSort); };
+GridOptionsWrapper.prototype.isGroupSuppressAutoColumn = function() { return isTrue(this.gridOptions.groupSuppressAutoColumn); };
 GridOptionsWrapper.prototype.isGroupHeaders = function() { return isTrue(this.gridOptions.groupHeaders); };
-GridOptionsWrapper.prototype.getGroupInnerRenderer = function() { return this.gridOptions.groupInnerRenderer; };
 GridOptionsWrapper.prototype.isDontUseScrolls = function() { return isTrue(this.gridOptions.dontUseScrolls); };
+GridOptionsWrapper.prototype.isSuppressDescSort = function() { return isTrue(this.gridOptions.suppressDescSort); };
 GridOptionsWrapper.prototype.getRowStyle = function() { return this.gridOptions.rowStyle; };
 GridOptionsWrapper.prototype.getRowClass = function() { return this.gridOptions.rowClass; };
-GridOptionsWrapper.prototype.getGridOptions = function() { return this.gridOptions; };
 GridOptionsWrapper.prototype.getHeaderCellRenderer = function() { return this.gridOptions.headerCellRenderer; };
 GridOptionsWrapper.prototype.getApi = function() { return this.gridOptions.api; };
 GridOptionsWrapper.prototype.isEnableColResize = function() { return this.gridOptions.enableColResize; };
@@ -40,6 +39,7 @@ GridOptionsWrapper.prototype.getGroupAggFunction = function() { return this.grid
 GridOptionsWrapper.prototype.getGroupAggFields = function() { return this.gridOptions.groupAggFields; };
 GridOptionsWrapper.prototype.getAllRows = function() { return this.gridOptions.rowData; };
 GridOptionsWrapper.prototype.isGroupUseEntireRow = function() { return isTrue(this.gridOptions.groupUseEntireRow); };
+GridOptionsWrapper.prototype.getGroupColumnDef = function() { return this.gridOptions.groupColumnDef; };
 GridOptionsWrapper.prototype.isAngularCompileRows = function() { return isTrue(this.gridOptions.angularCompileRows); };
 GridOptionsWrapper.prototype.isAngularCompileFilters = function() { return isTrue(this.gridOptions.angularCompileFilters); };
 GridOptionsWrapper.prototype.isAngularCompileHeaders = function() { return isTrue(this.gridOptions.angularCompileHeaders); };
@@ -56,6 +56,15 @@ GridOptionsWrapper.prototype.getVirtualRowRemoved = function() { return this.gri
 GridOptionsWrapper.prototype.getDatasource = function() { return this.gridOptions.datasource; };
 GridOptionsWrapper.prototype.getReady = function() { return this.gridOptions.ready; };
 GridOptionsWrapper.prototype.getRowBuffer = function() { return this.gridOptions.rowBuffer; };
+
+GridOptionsWrapper.prototype.getGroupRowInnerRenderer = function() {
+    if (this.gridOptions.groupInnerRenderer) {
+        console.warn('ag-grid: as of v1.10.0 (21st Jun 2015) groupInnerRenderer is nwo called groupRowInnerRenderer. Please change you code as groupInnerRenderer is deprecated.');
+        return this.gridOptions.groupInnerRenderer;
+    } else {
+        return this.gridOptions.groupRowInnerRenderer;
+    }
+};
 
 GridOptionsWrapper.prototype.getColWidth = function() {
     if (typeof this.gridOptions.colWidth !== 'number' ||  this.gridOptions.colWidth < constants.MIN_COL_WIDTH) {
@@ -82,8 +91,6 @@ GridOptionsWrapper.prototype.getIcons = function() {
     return this.gridOptions.icons;
 };
 
-GridOptionsWrapper.prototype.isDoInternalGrouping = function() {
-    return !this.isRowsAlreadyGrouped() && this.gridOptions.groupKeys;
 };
 GridOptionsWrapper.prototype.isDoInternalExpanding = function() {
     return !this.isRowsAlreadyExpanded() && this.gridOptions.expandRow;

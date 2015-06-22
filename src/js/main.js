@@ -2,7 +2,7 @@
 // Written by Niall Crosby
 // www.angulargrid.com
 //
-// Version 1.9.2
+// Version 1.10.0
 
 (function() {
 
@@ -46,7 +46,7 @@
         if ($attrs) {
             // new directive of ag-grid
             var keyOfGridInScope = $attrs.agGrid;
-            var quickFilterOnScope = keyOfGridInScope + '.quickFilterText';
+            quickFilterOnScope = keyOfGridInScope + '.quickFilterText';
             gridOptions = $scope.$eval(keyOfGridInScope);
             if (!gridOptions) {
                 console.warn("WARNING - grid options for Angular Grid not found. Please ensure the attribute ag-grid points to a valid object on the scope");
@@ -78,7 +78,7 @@
         if (typeof element === 'string') {
             eGridDiv = document.querySelector(element);
             if (!eGridDiv) {
-                console.log('WARNING - was not able to find element ' + element + ' in the DOM, Angular Grid initialisation aborted.');
+                console.warn('WARNING - was not able to find element ' + element + ' in the DOM, Angular Grid initialisation aborted.');
                 return;
             }
         } else {

@@ -41,6 +41,11 @@
             label {
                 font-weight: normal !important;
             }
+
+            .blue {
+                background-color: darkblue;
+                color: lightblue;
+            }
         </style>
     </head>
 
@@ -157,6 +162,9 @@
                     <input placeholder="col" type="text" ng-model="jumpToColText" ng-change="jumpToCol()" style="width: 40px"/>
                 </span>
 
+                <span style="padding-left: 20px; display: inline-block;">
+                    <button ng-click="toggleToolPanel()">Tool Panel</button>
+                </span>
                 <!--
                                 <input placeholder="Line number..." type="text" ng-model="jumpToRowText"/>
                                 <button ng-click="jumpToRow()">Go</button>

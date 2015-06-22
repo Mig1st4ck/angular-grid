@@ -219,6 +219,16 @@
                     <a class="sidebarLink" href="/angular-grid-grouping/index.php">Grouping & Aggregating Rows</a>
                 <?php } ?>
 
+                <?php if ($key == "Tool Panel") { ?>
+                    <span class="sidebarLinkSelected">Tool Panel</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/angular-grid-tool-panel/index.php">Tool Panel</a>
+                <?php } ?>
+
+                <h4>
+                    Paging
+                </h4>
+
                 <?php if ($key == "Datasource") { ?>
                     <span class="sidebarLinkSelected">Datasource</span>
                 <?php } else { ?>
@@ -231,10 +241,10 @@
                     <a class="sidebarLink" href="/angular-grid-pagination/index.php">Pagination</a>
                 <?php } ?>
 
-                <?php if ($key == "Virtual Paging") { ?>
-                    <span class="sidebarLinkSelected">Virtual Paging</span>
+                <?php if ($key == "Virtual Paging / Infinite Scrolling") { ?>
+                    <span class="sidebarLinkSelected">Virtual Paging / Infinite Scrolling</span>
                 <?php } else { ?>
-                    <a class="sidebarLink" href="/angular-grid-virtual-paging/index.php">Virtual Paging</a>
+                    <a class="sidebarLink" href="/angular-grid-virtual-paging/index.php">Virtual Paging<br/>& Infinite Scrolling</a>
                 <?php } ?>
 
                 <h4>
@@ -269,12 +279,6 @@
                     <span class="sidebarLinkSelected">No Scrolling</span>
                 <?php } else { ?>
                     <a class="sidebarLink" href="/angular-grid-no-scrolls/index.php">No Scrolling</a>
-                <?php } ?>
-
-                <?php if ($key == "No Vertical Scroll") { ?>
-                    <span class="sidebarLinkSelected">No Vertical Scroll</span>
-                <?php } else { ?>
-                    <a class="sidebarLink" href="/angular-grid-no-vertical-scroll/index.php">No Vertical Scroll</a>
                 <?php } ?>
 
                 <?php if ($key == "API") { ?>

@@ -6,7 +6,7 @@ var svgFactory = new SvgFactory();
 
 function HeaderRenderer() {}
 
-HeaderRenderer.prototype.init = function(gridOptionsWrapper, columnController, columnModel, eGrid, angularGrid, filterManager, $scope, $compile, expressionService) {
+HeaderRenderer.prototype.init = function(gridOptionsWrapper, columnController, columnModel, gridPanel, angularGrid, filterManager, $scope, $compile, expressionService) {
     this.expressionService = expressionService;
     this.gridOptionsWrapper = gridOptionsWrapper;
     this.columnModel = columnModel;
@@ -15,24 +15,14 @@ HeaderRenderer.prototype.init = function(gridOptionsWrapper, columnController, c
     this.filterManager = filterManager;
     this.$scope = $scope;
     this.$compile = $compile;
-    this.findAllElements(eGrid);
+    this.findAllElements(gridPanel);
 };
 
-HeaderRenderer.prototype.findAllElements = function(eGrid) {
-
-    if (this.gridOptionsWrapper.isDontUseScrolls()) {
-        this.eHeaderContainer = eGrid.querySelector(".ag-header-container");
-        this.eRoot = eGrid.querySelector(".ag-root");
-        // for no-scroll, all header cells live in the header container (the ag-header doesn't exist)
-        this.eHeaderParent = this.eHeaderContainer;
-    } else {
-        this.ePinnedHeader = eGrid.querySelector(".ag-pinned-header");
-        this.eHeaderContainer = eGrid.querySelector(".ag-header-container");
-        this.eHeader = eGrid.querySelector(".ag-header");
-        this.eRoot = eGrid.querySelector(".ag-root");
-        // for scroll, all header cells live in the header (contains both normal and pinned headers)
-        this.eHeaderParent = this.eHeader;
-    }
+HeaderRenderer.prototype.findAllElements = function(gridPanel) {
+    this.ePinnedHeader = gridPanel.getPinnedHeader();
+    this.eHeaderContainer = gridPanel.getHeaderContainer();
+    this.eHeader = gridPanel.getHeader();
+    this.eRoot = gridPanel.getRoot();
 };
 
 HeaderRenderer.prototype.refreshHeader = function() {
@@ -55,7 +45,7 @@ HeaderRenderer.prototype.refreshHeader = function() {
 };
 
 HeaderRenderer.prototype.insertHeadersWithGrouping = function() {
-    var groups = this.columnModel.getColumnGroups();
+    var groups = this.columnModel.getHeaderGroups();
     var that = this;
     groups.forEach(function(group) {
         var eHeaderCell = that.createGroupedHeaderCell(group);
@@ -122,16 +112,16 @@ HeaderRenderer.prototype.createGroupedHeaderCell = function(group) {
 HeaderRenderer.prototype.addGroupExpandIcon = function(group, eHeaderGroup, expanded) {
     var eGroupIcon;
     if (expanded) {
-        eGroupIcon = utils.createIcon('columnGroupOpened', this.gridOptionsWrapper, null, svgFactory.createArrowLeftSvg);
+        eGroupIcon = utils.createIcon('headerGroupOpened', this.gridOptionsWrapper, null, svgFactory.createArrowLeftSvg);
     } else {
-        eGroupIcon = utils.createIcon('columnGroupClosed', this.gridOptionsWrapper, null, svgFactory.createArrowRightSvg);
+        eGroupIcon = utils.createIcon('headerGroupClosed', this.gridOptionsWrapper, null, svgFactory.createArrowRightSvg);
     }
     eGroupIcon.className = 'ag-header-expand-icon';
     eHeaderGroup.appendChild(eGroupIcon);
 
     var that = this;
     eGroupIcon.onclick = function() {
-        that.columnController.columnGroupOpened(group);
+        that.columnController.headerGroupOpened(group);
     };
 };
 
@@ -196,6 +186,15 @@ HeaderRenderer.prototype.createHeaderCell = function(column, grouped, headerGrou
     // stick the header cell in column, as we access it when group is re-sized
     column.eHeaderCell = eHeaderCell;
 
+    var newChildScope;
+    if (this.gridOptionsWrapper.isAngularCompileHeaders()) {
+        newChildScope = this.$scope.$new();
+        newChildScope.colDef = colDef;
+        newChildScope.colIndex = colDef.index;
+        newChildScope.colDefWrapper = column;
+        this.childScopes.push(newChildScope);
+    }
+
     var headerCellClasses = ['ag-header-cell'];
     if (grouped) {
         headerCellClasses.push('ag-header-cell-grouped'); // this takes 50% height
@@ -204,12 +203,14 @@ HeaderRenderer.prototype.createHeaderCell = function(column, grouped, headerGrou
     }
     eHeaderCell.className = headerCellClasses.join(' ');
 
+    this.addHeaderClassesFromCollDef(colDef, newChildScope, eHeaderCell);
+
     // add tooltip if exists
     if (colDef.headerTooltip) {
         eHeaderCell.title = colDef.headerTooltip;
     }
 
-    if (this.gridOptionsWrapper.isEnableColResize()) {
+    if (this.gridOptionsWrapper.isEnableColResize() && !colDef.suppressResize) {
         var headerCellResize = document.createElement("div");
         headerCellResize.className = "ag-header-cell-resize";
         eHeaderCell.appendChild(headerCellResize);
@@ -269,15 +270,6 @@ HeaderRenderer.prototype.createHeaderCell = function(column, grouped, headerGrou
         headerCellRenderer = this.gridOptionsWrapper.getHeaderCellRenderer();
     }
 
-    var newChildScope;
-    if (this.gridOptionsWrapper.isAngularCompileHeaders()) {
-        newChildScope = this.$scope.$new();
-        newChildScope.colDef = colDef;
-        newChildScope.colIndex = colDef.index;
-        newChildScope.colDefWrapper = column;
-        this.childScopes.push(newChildScope);
-    }
-
     var headerNameValue = this.columnModel.getDisplayNameForCol(column);
 
     if (headerCellRenderer) {
@@ -321,23 +313,62 @@ HeaderRenderer.prototype.createHeaderCell = function(column, grouped, headerGrou
     return eHeaderCell;
 };
 
+HeaderRenderer.prototype.addHeaderClassesFromCollDef = function(colDef, $childScope, eHeaderCell) {
+    if (colDef.headerClass) {
+        var classToUse;
+        if (typeof colDef.headerClass === 'function') {
+            var params = {
+                colDef: colDef,
+                $scope: $childScope,
+                context: this.gridOptionsWrapper.getContext(),
+                api: this.gridOptionsWrapper.getApi()
+            };
+            classToUse = colDef.headerClass(params);
+        } else {
+            classToUse = colDef.headerClass;
+        }
+
+        if (typeof classToUse === 'string') {
+            utils.addCssClass(eHeaderCell, classToUse);
+        } else if (Array.isArray(classToUse)) {
+            classToUse.forEach(function(cssClassItem) {
+                utils.addCssClass(eHeaderCell, cssClassItem);
+            });
+        }
+    }
+};
+
+HeaderRenderer.prototype.getNextSortDirection = function(direction) {
+    var suppressUnSort = this.gridOptionsWrapper.isSuppressUnSort();
+    var suppressDescSort = this.gridOptionsWrapper.isSuppressDescSort();
+
+    switch (direction) {
+        case constants.DESC:
+            if (suppressUnSort) {
+                return constants.ASC;
+            } else {
+                return null;
+            }
+        case constants.ASC:
+            if (suppressUnSort && suppressDescSort) {
+                return constants.ASC;
+            } else if (suppressDescSort) {
+                return null;
+            } else {
+                return constants.DESC;
+            }
+        default :
+            return constants.ASC;
+    }
+};
+
 HeaderRenderer.prototype.addSortHandling = function(headerCellLabel, column) {
     var that = this;
 
     headerCellLabel.addEventListener("click", function(e) {
 
         // update sort on current col
-        if (column.sort === constants.DESC) {
-            if (that.gridOptionsWrapper.isSuppressUnSort()) {
-                column.sort = constants.ASC;
-            } else {
-                column.sort = null;
-            }
-        } else if (column.sort === constants.ASC) {
-            column.sort = constants.DESC;
-        } else {
-            column.sort = constants.ASC;
-        }
+        column.sort = that.getNextSortDirection(column.sort);
 
         // sortedAt used for knowing order of cols when multi-col sort
         if (column.sort) {

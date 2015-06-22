@@ -25,16 +25,28 @@ include '../documentation_header.php';
             <td>The name to render in the column header</td>
         </tr>
         <tr>
+            <th>field</th>
+            <td>The field of the row to get the cells data from</td>
+        </tr>
+        <tr>
             <th>headerValueGetter(params)</th>
             <td>Expression or function to get the cells value.</td>
         </tr>
         <tr>
-            <th>headerTooltip</th>
-            <td>Tooltip for the column header</td>
+            <th>colId</th>
+            <td>The unique ID to give the column. This is optional. If missing, the ID will default to the field.
+            If both field and colId are missing, a unique ID will be generated. This ID is used to identify
+            the column in the API for sorting, filtering etc.</td>
         </tr>
         <tr>
-            <th>field</th>
-            <td>The field of the row to get the cells data from</td>
+            <th>hide</th>
+            <td>Set to true for this column to be hidden. Naturally you might think, it would make more sense to call this field
+            'visible' and mark it false to hide, however we want all default values to be false and we want columns to be
+            visible by default.</td>
+        </tr>
+        <tr>
+            <th>headerTooltip</th>
+            <td>Tooltip for the column header</td>
         </tr>
         <tr>
             <th>valueGetter(params)</th>
@@ -85,8 +97,16 @@ include '../documentation_header.php';
             <td>Set to true if you want this columns width to be fixed during 'size to fit' operation.</td>
         </tr>
         <tr>
-            <th>group</th>
+            <th>suppressResize</th>
+            <td>Set to true if you do not want this column to be resizable by dragging it's edge.</td>
+        </tr>
+        <tr>
+            <th>headerGroup</th>
             <td>If grouping columns, the group this column belongs to.</td>
+        </tr>
+        <tr>
+            <th>headerGroupShow</th>
+            <td>Whether to show the column when the group is open / closed.</td>
         </tr>
         <tr>
             <th>editable</th>
