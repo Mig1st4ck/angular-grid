@@ -91,7 +91,6 @@ GridOptionsWrapper.prototype.getIcons = function() {
     return this.gridOptions.icons;
 };
 
-};
 GridOptionsWrapper.prototype.isDoInternalExpanding = function() {
     return !this.isRowsAlreadyExpanded() && this.gridOptions.expandRow;
 };
