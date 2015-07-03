@@ -69,6 +69,8 @@ gridsModule.controller('mainController', function($scope) {
 //            headerHeight: 100, // set to an integer, default is 25, or 50 if grouping columns
         groupSuppressAutoColumn: true,
         groupIncludeFooter: false,
+        groupHidePivotColumns: true,
+        //unSortIcon: true,
         pinnedColumnCount: 0, //and integer, zero or more, default is 0
         rowHeight: 25, // defaults to 25, can be any integer
         enableColResize: true, //one of [true, false]
@@ -84,13 +86,16 @@ gridsModule.controller('mainController', function($scope) {
         //suppressDescSort: true,
         //suppressMultiSort: true,
         showToolPanel: true,
+        //toolPanelSuppressPivot: true,
+        //toolPanelSuppressValues: true,
         //groupSuppressAutoColumn: true,
-        groupAggFunction: groupAggFunction,
+        //groupAggFunction: groupAggFunction,
+        //groupAggFields: ['bankBalance','totalWinnings'],
         angularCompileRows: false,
         angularCompileFilters: true,
         angularCompileHeaders: true,
         //dontUseScrolls: true,
-        //rowClass: function(row, pinnedRow) { return (row.country === 'Ireland') ? "theClass" : null; },
+        //rowClass: function(params) { return (params.data.country === 'Ireland') ? "theClass" : null; },
         //headerCellRenderer: headerCellRenderer_text,
         //headerCellRenderer: headerCellRenderer_dom,
         rowSelected: rowSelected, //callback when row selected
@@ -99,7 +104,7 @@ gridsModule.controller('mainController', function($scope) {
             //menu: '<i class="fa fa-bars"/>',
             //columnVisible: '<i class="fa fa-eye"/>',
             //columnHidden: '<i class="fa fa-eye-slash"/>',
-            columnRemoveFromGroupIcon: '<i class="fa fa-remove"/>',
+            columnRemoveFromGroup: '<i class="fa fa-remove"/>',
             filter: '<i class="fa fa-filter"/>',
             sortAscending: '<i class="fa fa-long-arrow-down"/>',
             sortDescending: '<i class="fa fa-long-arrow-up"/>',
@@ -184,6 +189,7 @@ gridsModule.controller('mainController', function($scope) {
             filterParams: {cellRenderer: booleanFilterCellRenderer}},
         {headerName: "Bank Balance", field: "bankBalance", headerGroup: 'Performance', width: 150, editable: editableFunc, filter: WinningsFilter, cellRenderer: currencyRenderer, cellStyle: currencyCssFunc,
             filterParams: {cellRenderer: currencyRenderer},
+            aggFunc: 'sum',
             icons: {
                 sortAscending: '<i class="fa fa-sort-amount-asc"/>',
                 sortDescending: '<i class="fa fa-sort-amount-desc"/>'
@@ -200,6 +206,7 @@ gridsModule.controller('mainController', function($scope) {
             filterParams: {cellRenderer: ratingFilterRenderer}
         },
         {headerName: "Total Winnings", field: "totalWinnings", filter: 'number', editable: editableFunc, newValueHandler: numberNewValueHandler, width: 150, cellRenderer: currencyRenderer, cellStyle: currencyCssFunc,
+            aggFunc: 'sum',
             icons: {
                 sortAscending: '<i class="fa fa-sort-amount-asc"/>',
                 sortDescending: '<i class="fa fa-sort-amount-desc"/>'
@@ -207,7 +214,7 @@ gridsModule.controller('mainController', function($scope) {
         }
     ];
     //put in the month cols
-    months.forEach(function(month) {
+    months.forEach(function(month, index) {
         defaultCols.push({headerName: month, headerGroup: 'Monthly Breakdown', field: month.toLocaleLowerCase(), width: 100, filter: 'number', editable: editableFunc,
             newValueHandler: numberNewValueHandler, cellRenderer: currencyRenderer, filterCellRenderer: currencyRenderer,
             cellStyle: {"text-align": "right"}})
@@ -557,6 +564,7 @@ function headerCellRenderer_angular(params) {
         '</span>';
 }
 
+/*
 function groupAggFunction(nodes) {
     var colsToSum = ['bankBalance','totalWinnings','jan','feb',"mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
     var sums = {};
@@ -570,6 +578,7 @@ function groupAggFunction(nodes) {
 
     return sums;
 }
+*/
 
 function currencyCssFunc(params) {
     if (params.value!==null && params.value!==undefined && params.value<0) {

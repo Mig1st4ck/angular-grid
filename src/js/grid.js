@@ -15,12 +15,14 @@ var TemplateService = require('./templateService');
 var ToolPanel = require('./toolPanel/toolPanel');
 var BorderLayout = require('./layout/borderLayout');
 var GridPanel = require('./gridPanel/gridPanel');
+var agPopupService = require('./widgets/agPopupService');
 
 function Grid(eGridDiv, gridOptions, $scope, $compile, quickFilterOnScope) {
 
     this.gridOptions = gridOptions;
     this.gridOptionsWrapper = new GridOptionsWrapper(this.gridOptions);
 
+    this.addApi();
     this.setupComponents($scope, $compile, eGridDiv);
 
     var that = this;
@@ -35,8 +37,6 @@ function Grid(eGridDiv, gridOptions, $scope, $compile, quickFilterOnScope) {
 
     this.virtualRowCallbacks = {};
 
-    var forPrint = this.gridOptionsWrapper.isDontUseScrolls();
-    this.addApi();
 
     this.scrollWidth = utils.getScrollbarWidth();
 
@@ -45,6 +45,7 @@ function Grid(eGridDiv, gridOptions, $scope, $compile, quickFilterOnScope) {
 
     this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getAllRows());
 
+    var forPrint = this.gridOptionsWrapper.isDontUseScrolls();
     if (!forPrint) {
         window.addEventListener('resize', this.doLayout.bind(this));
     }
@@ -62,11 +63,24 @@ function Grid(eGridDiv, gridOptions, $scope, $compile, quickFilterOnScope) {
 
     this.doLayout();
 
+    this.finished = false;
+    this.periodicallyDoLayout();
+
     // if ready function provided, use it
     if (typeof this.gridOptionsWrapper.getReady() == 'function') {
         this.gridOptionsWrapper.getReady()(gridOptions.api);
     }
 }
+
+Grid.prototype.periodicallyDoLayout = function() {
+    if (!this.finished) {
+        var that = this;
+        setTimeout(function() {
+            that.doLayout();
+            that.periodicallyDoLayout();
+        }, 500);
+    }
+};
 
 Grid.prototype.setupComponents = function($scope, $compile, eUserProvidedDiv) {
 
@@ -109,7 +123,7 @@ Grid.prototype.setupComponents = function($scope, $compile, eUserProvidedDiv) {
     if (!forPrint) {
         eToolPanel = new ToolPanel();
         toolPanelLayout = eToolPanel.layout;
-        eToolPanel.init(columnController, inMemoryRowController, gridOptionsWrapper);
+        eToolPanel.init(columnController, inMemoryRowController, gridOptionsWrapper, this.gridOptions.api);
     }
 
     // this is a child bean, get a reference and pass it on
@@ -149,6 +163,7 @@ Grid.prototype.setupComponents = function($scope, $compile, eUserProvidedDiv) {
         dontFill: forPrint,
         name: 'eRootPanel'
     });
+    agPopupService.init(this.eRootPanel.getGui());
 
     // default is we don't show paging panel, this is set to true when datasource is set
     this.eRootPanel.setSouthVisible(false);
@@ -226,10 +241,7 @@ Grid.prototype.refreshHeaderAndBody = function() {
 
 Grid.prototype.setFinished = function() {
     window.removeEventListener('resize', this.doLayout);
-};
-
-Grid.prototype.getPopupParent = function() {
-    return this.eRootPanel.getGui();
+    this.finished = true;
 };
 
 Grid.prototype.getQuickFilter = function() {
@@ -550,6 +562,15 @@ Grid.prototype.addApi = function() {
         },
         hideColumns: function(colIds, hide) {
             that.columnController.hideColumns(colIds, hide);
+        },
+        getColumnState: function() {
+            return that.columnController.getState();
+        },
+        setColumnState: function(state) {
+            that.columnController.setState(state);
+            that.inMemoryRowController.doGrouping();
+            that.inMemoryRowController.updateModel(constants.STEP_EVERYTHING);
+            that.refreshHeaderAndBody();
         }
     };
     this.gridOptions.api = api;
@@ -684,20 +705,14 @@ Grid.prototype.updatePinnedColContainerWidthAfterColResize = function() {
 };
 
 Grid.prototype.doLayout = function() {
-    setTimeout(this.doLayoutForReal.bind(this), 0);
-    setTimeout(this.doLayoutForReal.bind(this), 10);
-    setTimeout(this.doLayoutForReal.bind(this), 20);
-    //setTimeout(this.doLayoutForReal.bind(this), 500);
-    this.doLayoutForReal();
-};
-
-Grid.prototype.doLayoutForReal = function() {
     // need to do layout first, as drawVirtualRows and setPinnedColHeight
     // need to know the result of the resizing of the panels.
-    this.eRootPanel.doLayout();
+    var sizeChanged = this.eRootPanel.doLayout();
     // both of the two below should be done in gridPanel, the gridPanel should register 'resize' to the panel
-    this.rowRenderer.drawVirtualRows();
-    this.gridPanel.setPinnedColHeight();
+    if (sizeChanged) {
+        this.rowRenderer.drawVirtualRows();
+        this.gridPanel.setPinnedColHeight();
+    }
 };
 
 module.exports = Grid;

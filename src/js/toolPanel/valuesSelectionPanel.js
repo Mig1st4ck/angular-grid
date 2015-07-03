@@ -1,16 +1,17 @@
-var AgList = require("../widgets/agList");
+var AgList = require('../widgets/agList');
 var constants = require('../constants');
 var utils = require('../utils');
 var BorderLayout = require('../layout/borderLayout');
 var SvgFactory = require('../svgFactory');
+var AgDropdownList = require('../widgets/agDropdownList');
 
 var svgFactory = new SvgFactory();
 
-function GroupSelectionPanel(columnController, inMemoryRowController, gridOptionsWrapper) {
+function ValuesSelectionPanel(columnController, gridOptionsWrapper, api) {
     this.gridOptionsWrapper = gridOptionsWrapper;
     this.setupComponents();
     this.columnController = columnController;
-    this.inMemoryRowController = inMemoryRowController;
+    this.api = api;
 
     var that = this;
     this.columnController.addListener({
@@ -18,15 +19,15 @@ function GroupSelectionPanel(columnController, inMemoryRowController, gridOption
     });
 }
 
-GroupSelectionPanel.prototype.columnsChanged = function(newColumns, newGroupedColumns) {
-    this.cColumnList.setModel(newGroupedColumns);
+ValuesSelectionPanel.prototype.columnsChanged = function(newColumns, newGroupedColumns, newValuesColumns) {
+    this.cColumnList.setModel(newValuesColumns);
 };
 
-GroupSelectionPanel.prototype.addDragSource = function(dragSource) {
+ValuesSelectionPanel.prototype.addDragSource = function(dragSource) {
     this.cColumnList.addDragSource(dragSource);
 };
 
-GroupSelectionPanel.prototype.columnCellRenderer = function(params) {
+ValuesSelectionPanel.prototype.cellRenderer = function(params) {
     var column = params.value;
     var colDisplayName = this.columnController.getDisplayNameForCol(column);
 
@@ -41,26 +42,40 @@ GroupSelectionPanel.prototype.columnCellRenderer = function(params) {
         var model = that.cColumnList.getModel();
         model.splice(model.indexOf(column), 1);
         that.cColumnList.setModel(model);
-        that.onGroupingChanged();
+        that.onValuesChanged();
     });
+
+    var agValueType = new AgDropdownList();
+    agValueType.setModel([constants.SUM, constants.MIN, constants.MAX]);
+    agValueType.setSelected(column.aggFunc);
+    agValueType.setWidth(45);
+
+    agValueType.addItemSelectedListener( function(item) {
+        column.aggFunc = item;
+        that.onValuesChanged();
+    });
+
+    eResult.appendChild(agValueType.getGui());
 
     var eValue = document.createElement('span');
     eValue.innerHTML = colDisplayName;
+    eValue.style.paddingLeft = '2px';
     eResult.appendChild(eValue);
 
     return eResult;
 };
 
-GroupSelectionPanel.prototype.setupComponents = function() {
+ValuesSelectionPanel.prototype.setupComponents = function() {
     var localeTextFunc = this.gridOptionsWrapper.getLocaleTextFunc();
-    var columnsLocalText = localeTextFunc('pivotedColumns', 'Pivoted Columns');
-    var pivotedColumnsEmptyMessage = localeTextFunc('pivotedColumnsEmptyMessage', 'Drag columns from above to pivot');
+    var columnsLocalText = localeTextFunc('valueColumns', 'Value Columns');
+    var emptyMessage = localeTextFunc('valueColumnsEmptyMessage', 'Drag columns from above to create values');
 
     this.cColumnList = new AgList();
-    this.cColumnList.setCellRenderer(this.columnCellRenderer.bind(this));
-    this.cColumnList.addModelChangedListener(this.onGroupingChanged.bind(this));
-    this.cColumnList.setEmptyMessage(pivotedColumnsEmptyMessage);
+    this.cColumnList.setCellRenderer(this.cellRenderer.bind(this));
+    this.cColumnList.addModelChangedListener(this.onValuesChanged.bind(this));
+    this.cColumnList.setEmptyMessage(emptyMessage);
     this.cColumnList.addStyles({height: '100%', overflow: 'auto'});
+    this.cColumnList.addBeforeDropListener(this.beforeDropListener.bind(this));
 
     var eNorthPanel = document.createElement('div');
     eNorthPanel.style.paddingTop = '10px';
@@ -72,14 +87,14 @@ GroupSelectionPanel.prototype.setupComponents = function() {
     });
 };
 
-GroupSelectionPanel.prototype.onGroupingChanged = function() {
-    this.inMemoryRowController.doGrouping();
-    this.inMemoryRowController.updateModel(constants.STEP_EVERYTHING);
-    this.columnController.onColumnStateChanged();
+ValuesSelectionPanel.prototype.beforeDropListener = function(newItem) {
+    if (!newItem.aggFunc) {
+        newItem.aggFunc = constants.SUM;
+    }
 };
 
-GroupSelectionPanel.prototype.getGui = function() {
-    return this.eRootPanel.getGui();
+ValuesSelectionPanel.prototype.onValuesChanged = function() {
+    this.api.recomputeAggregates();
 };
 
-module.exports = GroupSelectionPanel;
+module.exports = ValuesSelectionPanel;

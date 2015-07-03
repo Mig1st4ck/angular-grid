@@ -465,19 +465,27 @@ RowRenderer.prototype.addClassesToRow = function(rowIndex, node, eRow) {
 
     // add in extra classes provided by the config
     if (this.gridOptionsWrapper.getRowClass()) {
-        var params = {
-            node: node,
-            data: node.data,
-            rowIndex: rowIndex,
-            context: this.gridOptionsWrapper.getContext(),
-            api: this.gridOptionsWrapper.getApi()
-        };
-        var extraRowClasses = this.gridOptionsWrapper.getRowClass()(params);
-        if (extraRowClasses) {
-            if (typeof extraRowClasses === 'string') {
-                classesList.push(extraRowClasses);
-            } else if (Array.isArray(extraRowClasses)) {
-                extraRowClasses.forEach(function(classItem) {
+        var gridOptionsRowClass = this.gridOptionsWrapper.getRowClass();
+
+        var classToUse;
+        if (typeof gridOptionsRowClass === 'function') {
+            var params = {
+                node: node,
+                data: node.data,
+                rowIndex: rowIndex,
+                context: this.gridOptionsWrapper.getContext(),
+                api: this.gridOptionsWrapper.getApi()
+            };
+            classToUse = gridOptionsRowClass(params);
+        } else {
+            classToUse = gridOptionsRowClass;
+        }
+
+        if (classToUse) {
+            if (typeof classToUse === 'string') {
+                classesList.push(classToUse);
+            } else if (Array.isArray(classToUse)) {
+                classToUse.forEach(function(classItem) {
                     classesList.push(classItem);
                 });
             }
@@ -653,9 +661,7 @@ RowRenderer.prototype.addStylesFromCollDef = function(column, value, node, $chil
         }
 
         if (cssToUse) {
-            Object.keys(cssToUse).forEach(function(key) {
-                eGridCell.style[key] = cssToUse[key];
-            });
+            utils.addStylesToElement(eGridCell, cssToUse);
         }
     }
 };

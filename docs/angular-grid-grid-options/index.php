@@ -80,6 +80,10 @@ include '../documentation_header.php';
             <td>Set to true or false. If true, sorting descending is disabled.</td>
         </tr>
         <tr>
+            <th>unSortIcon</th>
+            <td>Set to true to show the 'no sort' icon.</td>
+        </tr>
+        <tr>
             <th>suppressMultiSort</th>
             <td>Set to true or false. If true, shift-clicking column header doesn't multi sort.</td>
         </tr>
@@ -122,8 +126,8 @@ include '../documentation_header.php';
         </tr>
         <tr>
             <th>groupKeys<br/> groupUseEntireRow<br/> groupRowInnerRenderer<br/>
-                groupDefaultExpanded<br/> groupAggFunction<br/>
-                groupSelectsChildren<br/> groupSuppressAutoColumn</th>
+                groupDefaultExpanded<br/> groupAggFields <br/> groupAggFunction<br/>
+                groupSelectsChildren<br/> groupSuppressAutoColumn <br/> groupHidePivotColumns</th>
             <td>Parameters for grouping. See the section on grouping for details explanation.</td>
         </tr>
         <tr>
@@ -197,6 +201,20 @@ include '../documentation_header.php';
         <tr>
             <th>rowsBuffer</th>
             <td>Defaults to 20.  Set higher to increase the number of rows that automatically load before and after the viewport.</td>
+        </tr>
+        <tr>
+            <th>showToolPanel</th>
+            <td>Set to true to show the tool panel by default.</td>
+        </tr>
+        <tr>
+            <th>toolPanelSuppressPivot</th>
+            <td>Set to true to not show the values or the pivots in the tool panel. It does not make sense
+                to show the values if no pivot functionality is allowed.</td>
+        </tr>
+        <tr>
+            <th>toolPanelSuppressValues</th>
+            <td>Set to true to not show the values in the tool panel. The pivot may optionally still
+                be shown. This is useful when you are providing your own aggregate function.</td>
         </tr>
     </table>
 

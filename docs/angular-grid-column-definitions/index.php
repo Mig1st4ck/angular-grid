@@ -77,6 +77,10 @@ include '../documentation_header.php';
             <td>Function callback, gets called when a cell is double clicked.</td>
         </tr>
         <tr>
+            <th>aggFunc</th>
+            <td>Name of function to use for aggregation. One of [sum,min,max].</td>
+        </tr>
+        <tr>
             <th>comparator()</th>
             <td>Comparator function for custom sorting.</td>
         </tr>
@@ -91,6 +95,10 @@ include '../documentation_header.php';
         <tr>
             <th>suppressSorting</th>
             <td>Set to true if no sorting should be done for this column.</td>
+        </tr>
+        <tr>
+            <th>unSortIcon</th>
+            <td>Set to true if you want the unsorted icon to be shown when no sort is applied to this column.</td>
         </tr>
         <tr>
             <th>suppressSizeToFit</th>
@@ -122,7 +130,7 @@ include '../documentation_header.php';
             <td>If true, this cell gets refreshed when api.softRefreshView() gets called.</td>
         </tr>
         <tr>
-            <th>cellTemplate<br/>cellTemplateUrl</th>
+            <th>template<br/>templateUrl</th>
             <td>Cell template (or specify URL to load template from) to use for cell.
                 Useful for AngularJS cells.</td>
         </tr>

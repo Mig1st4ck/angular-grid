@@ -22,6 +22,17 @@ Utils.prototype.map = function(array, callback) {
     return result;
 };
 
+Utils.prototype.forEach = function(array, callback) {
+    if (!array) {
+        return;
+    }
+
+    for (var i = 0; i<array.length; i++) {
+        var value = array[i];
+        callback(value, i);
+    }
+};
+
 Utils.prototype.getFunctionParameters = function(func) {
     var fnStr = func.toString().replace(FUNCTION_STRIP_COMMENTS, '');
     var result = fnStr.slice(fnStr.indexOf('(')+1, fnStr.indexOf(')')).match(FUNCTION_ARGUMENT_NAMES);
@@ -30,6 +41,18 @@ Utils.prototype.getFunctionParameters = function(func) {
     } else {
         return result;
     }
+};
+
+Utils.prototype.find = function(collection, predicate, value) {
+    if (collection === null || collection === undefined) {
+        return null;
+    }
+    for (var i = 0; i<collection.length; i++) {
+        if (collection[i][predicate] === value) {
+            return collection[i];
+        }
+    }
+    return null;
 };
 
 Utils.prototype.toStrings = function(array) {
@@ -142,7 +165,7 @@ Utils.prototype.removeAllChildren = function(node) {
 //adds an element to a div, but also adds a background checking for clicks,
 //so that when the background is clicked, the child is removed again, giving
 //a model look to popups.
-Utils.prototype.addAsModalPopup = function(eParent, eChild) {
+/*Utils.prototype.addAsModalPopup = function(eParent, eChild) {
     var eBackdrop = document.createElement("div");
     eBackdrop.className = "ag-popup-backdrop";
 
@@ -153,6 +176,10 @@ Utils.prototype.addAsModalPopup = function(eParent, eChild) {
 
     eParent.appendChild(eBackdrop);
     eParent.appendChild(eChild);
+};*/
+
+Utils.prototype.isVisible = function(element) {
+    return (element.offsetParent !== null)
 };
 
 //loads the template and returns it as an element. makes up for no simple way in
@@ -322,6 +349,11 @@ Utils.prototype.createIcon = function(iconName, gridOptionsWrapper, colDefWrappe
     return eResult;
 };
 
+Utils.prototype.addStylesToElement = function(eElement, styles) {
+    Object.keys(styles).forEach(function(key) {
+        eElement.style[key] = styles[key];
+    });
+};
 
 Utils.prototype.getScrollbarWidth = function () {
     var outer = document.createElement("div");

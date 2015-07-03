@@ -83,6 +83,12 @@ include '../documentation_header.php';
                 want complete control on the column displayed and don't want the grids help.
             </td>
         </tr>
+        <tr>
+            <th>groupHidePivotColumns</th>
+            <td>If true, when a column is pivoted, it is not displayed as a normal column. Useful when you
+                don't want the data appearing twice, once is group column, once in normal column.
+            </td>
+        </tr>
     </table>
 
     <h3>Grouping columns</h3>
@@ -98,21 +104,28 @@ include '../documentation_header.php';
         is explained in the next section (but used here).
     </p>
 
+    <h4>Option 1 - Simplest but not customisable:</h4>
     <p>
-        <h4>Option 1 - Simplest:</h4> Let the grid provide the default grouping column. If one of your columns is a group
-        column, you will see two group columns. This is the quickest way to get started.
+        Let the grid provide the default grouping column. This is the
+        quickest way to get started.
         <pre>gridOptions.isgroupSuppressAutoColumn = false; // or undefined
 gridOptions.groupColumnDef = null; // or undefined</pre>
+        All you have to do is provide your columns as normal and let the grid worry about introducing
+        the column to show the group when you are grouping.
     </p>
 
+    <h4>Option 2 - Most Common:</h4>
     <p>
-        <h4>Option 2 - Most Common:</h4> Tell the grid how you want the optional group column to look. Do this
-        by providing a groupColumnDef. A group column definition is exactly the same as any other column definition.
-        You could, if you choose, have a column that has nothing to do with grouping be included when you group,
-        however doing so would not be much use. You can also include group columns within your main list of
-        columns, useful when you want to split the grouping across multiple columns (eg one column is responsible
-        for the country grouping, another for the language grouping). A group column is just like any other
-        column, except it's cell renderer renders specific to a group.
+        Tell the grid how you want the optional group column to look. Do this
+        by providing a groupColumnDef.
+    <p>
+    </p>
+    <p>
+        A group column definition is exactly the same as any other column definition, the only difference is
+        the cell renderer will render the cell using the group info. So when defining a group column, be sure
+        to either choose the build in group cell renderer, or provide your own cell renderer that takes care
+        of the grouping.
+    </p>
         <pre>gridOptions.isgroupSuppressAutoColumn = false; // or undefined
 gridOptions.groupColumnDef = {
     cellRenderer: {
@@ -120,15 +133,21 @@ gridOptions.groupColumnDef = {
         headerName: 'Group Column'
     }
 };</pre>
+    <p>
         Because a group column is just a normal column, you can provide all the column attributes, such as header name,
-        css style and class, field, valueGetter etc. All of these parameters are used when the group column is
-        rendering a normal row (ie a leaf level row).
+        css style and class, field, valueGetter etc. All of these parameters are used as appropriate.
     </p>
 
+    <h4>Option 3 - No Grid Swapping of Columns:</h4>
     <p>
-        <h4>Option 3 - No Grid Swapping of Columns:</h4> Tell the grid you don't want it's help, that you will provide
-        the group column yourself. Using this, the grid will only make sense if at least one of your columns display
-        the group and allows you to expand / contract the group.
+        Tell the grid you don't want it's help, that you will provide the group column yourself, included
+        in he main list of columns. If you use this, make sure you do have at least one column showing the
+        group, otherwise the grid will not make sense as you will have to way to expand / contract the groups.
+    </p>
+    <p>
+        This method can also be used to have multiple columns to display the groups, useful when you want to split
+        the grouping across columns (eg one column is responsible
+        for the country grouping, another for the language grouping).
         <pre>gridOptions.isgroupSuppressAutoColumn = true;
 gridOptions.groupColumnDef = null; // doesn't matter, won't get used anyway</pre>
     </p>
@@ -146,7 +165,8 @@ gridOptions.groupColumnDef = null; // doesn't matter, won't get used anyway</pre
         renderer: 'group',
         keyMap: {from: 'to'},
         suppressCount: false,
-        checkbox: true
+        checkbox: true,
+        padding: 10
 }</pre>
 
     <p>
@@ -158,6 +178,7 @@ gridOptions.groupColumnDef = null; // doesn't matter, won't get used anyway</pre
             if the group was 'LDN', you could display it as 'London'.</li>
         <li><b>suppressCount:</b> One of [true, false], if true, count is not displayed beside the name.</li>
         <li><b>checkbox:</b> One of [true,false], if true, a selection checkbox is included.</li>
+        <li><b>padding:</b> A positive number. The amount of padding, in pixels, to indent each group.</li>
     </ul>
     </p>
 
@@ -174,16 +195,29 @@ gridOptions.groupColumnDef = null; // doesn't matter, won't get used anyway</pre
     <h3>Grouping with Aggregation</h3>
 
     <p>
-        You have two options for creating aggregates.
+        You have three options for creating aggregates.
         <ul>
-            <li>
-                Option 1 - provide an array of field names that should be summed to create the aggregate.
-            </li>
-            <li>
-                Option 2 - provide an function to do the aggregation.
-            </li>
+        <li>
+            <b>Option 1 - colDef.aggFunc:</b> Specify in the column definition what aggregation function
+            you want to apply to that column. Available aggregation functions are [sum,min,max].
+        </li>
+        <li>
+            <b>Option 2 - gridOptions.groupAggFields:</b> Provide an array of field names that should be used
+            to create the aggregates. This is equivalent to specifying aggFunc='sum' on the relevant columns.
+            This method has the advantage of aggregating on fields that do not map to columns directly - an
+            example may be that the column uses a value getter for which the field is just one parameter.
+        </li>
+        <li>
+            <b>Option 3 - gridOptions.groupAggFunction:</b> provide a function to do the aggregation. This
+            gives you full control.
+        </li>
         </ul>
     </p>
+
+    <note>
+        It is possible to mix option 1 and option 2 (ie both lists of aggregated fields will be combined).
+        If you choose option 3, then any configuration towards option 1 and 2 will be ignored.
+    </note>
 
     <h4>Example Option 1 - Summing Fields</h4>
 
