@@ -360,37 +360,36 @@ module awk.grid {
                     eMainRow.appendChild(eGroupRow);
                 }
 
+            } else if (this.gridOptionsWrapper.isDoInternalExpanding()) {
+                if (node.first) {
+                    var params = {
+                        node: node.parent,
+                        data: node.parent.data,
+                        rowIndex: rowIndex,
+                        api: this.gridOptionsWrapper.getApi()
+                    };
+                    var eGroupRow = that.cellRendererMap['expand'](params);
+                    eMainRow.style.height = (20 * node.parent.rows) + 'px';
+                    eMainRow.appendChild(eGroupRow);
+                }
+                if (node.group) {
+                    columns.forEach(function(column: any, index: any) {
+                        var firstCol = index === 0;
+                        var data = that.getDataForNode(node);
+                        var valueGetter = that.createValueGetter(data, column.colDef, node);
+                        that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
+                    });
+                }
             } else {
-	        if (this.gridOptionsWrapper.isDoInternalExpanding()) {
-	            if (node.first) {
-	                var params = {
-	                    node: node.parent,
-	                    data: node.parent.data,
-	                    rowIndex: rowIndex,
-	                    api: this.gridOptionsWrapper.getApi()
-	                };
-	                var eGroupRow = that.cellRendererMap['expand'](params);
-	                eMainRow.style.height = (20 * node.parent.rows) + 'px';
-	                eMainRow.appendChild(eGroupRow);
-	            }
-	            if (node.group)
-	            {
-	                columns.forEach(function(column: any, index: any) {
-	                    var firstCol = index === 0;
-	                    var data = that.getDataForNode(node);
-	                    var valueGetter = that.createValueGetter(data, column.colDef, node);
-	                    that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
-	                });
-	            }
-	        } else {
-	            columns.forEach(function(column: any, index: any) {
-	                var firstCol = index === 0;
-	                var data = that.getDataForNode(node);
-	                var valueGetter = that.createValueGetter(data, column.colDef, node);
-	                that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
-	            });
-	        }
-	    }
+
+                columns.forEach(function (column: any, index: any) {
+                    var firstCol = index === 0;
+                    var data = that.getDataForNode(node);
+                    var valueGetter = that.createValueGetter(data, column.colDef, node);
+                    that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
+                });
+            }
+
             //try compiling as we insert rows
             renderedRow.pinnedElement = this.compileAndAdd(this.ePinnedColsContainer, rowIndex, ePinnedRow, newChildScope);
             renderedRow.bodyElement = this.compileAndAdd(this.eBodyContainer, rowIndex, eMainRow, newChildScope);
@@ -1268,3 +1267,4 @@ module awk.grid {
         }
     }
 }
+

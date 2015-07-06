@@ -27,7 +27,7 @@ module awk.grid {
         isToolPanelSuppressPivot() { return isTrue(this.gridOptions.toolPanelSuppressPivot); }
         isToolPanelSuppressValues() { return isTrue(this.gridOptions.toolPanelSuppressValues); }
         isRowsAlreadyGrouped() { return isTrue(this.gridOptions.rowsAlreadyGrouped); }
-	      isRowsAlreadyExpanded() { return isTrue(this.gridOptions.rowsAlreadyExpanded); }
+        isRowsAlreadyExpanded() { return isTrue(this.gridOptions.rowsAlreadyExpanded); }
         isGroupSelectsChildren() { return isTrue(this.gridOptions.groupSelectsChildren); }
         isGroupHidePivotColumns() { return isTrue(this.gridOptions.groupHidePivotColumns); }
         isGroupIncludeFooter() { return isTrue(this.gridOptions.groupIncludeFooter); }
@@ -74,7 +74,7 @@ module awk.grid {
         isEnableServerSideFilter() { return this.gridOptions.enableServerSideFilter; }
         setSelectedRows(newSelectedRows: any) { return this.gridOptions.selectedRows = newSelectedRows; }
         setSelectedNodesById(newSelectedNodes: any) { return this.gridOptions.selectedNodesById = newSelectedNodes; }
-	      isDoInternalExpanding() { return !this.isRowsAlreadyExpanded() && this.gridOptions.expandRow; }
+        isDoInternalExpanding() { return !this.isRowsAlreadyExpanded() && this.gridOptions.expandRow; }
         getIcons() { return this.gridOptions.icons; }
 
         getGroupRowInnerRenderer() {
@@ -93,6 +93,7 @@ module awk.grid {
                 return this.gridOptions.colWidth;
             }
         }
+
         getHeaderHeight() {
             if (typeof this.gridOptions.headerHeight === 'number') {
                 // if header height provided, used it

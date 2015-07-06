@@ -383,15 +383,11 @@ module awk.grid {
         }
 
         // private
-	doExpanding = function() {
-	    var rowsAfterGroup: any;
-	    if (this.gridOptionsWrapper.isDoInternalExpanding()) {
-	        rowsAfterGroup = expandCreator.group(this.allRows);
-	    } else {
-	        rowsAfterGroup = this.allRows;
-	    }
-	    this.rowsAfterGroup = rowsAfterGroup;
-	}
+      	doExpanding() {
+      	    if (this.gridOptionsWrapper.isDoInternalExpanding()) {
+      	       this.rowsAfterGroup = expandCreator.group(this.allRows);
+      	    }
+      	}
 
         // private
         doFilter() {
@@ -482,8 +478,8 @@ module awk.grid {
 
             // aggregate here, so filters have the agg data ready
             this.doGrouping();
-	    // process here the expanded
-	    this.doExpanding();
+            // process here the expanded
+            this.doExpanding();
         }
 
         // add in index - this is used by the selectionController - so quick
