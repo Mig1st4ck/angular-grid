@@ -33,7 +33,7 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
         rowsAlreadyGrouped: true,
         columnDefs: columnDefs,
         rowData: rowData,
-        rowSelection: 'multiple',
+        rowSelection: 'single',
         enableColResize: true,
         enableSorting: true,
         rowHeight: 20,
@@ -45,6 +45,32 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
         groupInnerRenderer: groupInnerRendererFunc
     };
 
+    $scope.moveUp = function() {
+          var selects = $scope.gridOptions.api.getSelectedNodes();
+          if (selects.length == 1)
+          {
+            var id = selects[0].id;
+            if (id < 1) return;
+            var element = $scope.gridOptions.rowData[id];
+            $scope.gridOptions.rowData.splice(id, 1);
+            $scope.gridOptions.rowData.splice(id-1, 0, element);
+            $scope.gridOptions.api.onNewRows();
+            $scope.gridOptions.api.selectIndex(id-1);
+          }
+        };
+    $scope.moveDown = function() {
+          var selects = $scope.gridOptions.api.getSelectedNodes();
+          if (selects.length == 1)
+          {
+            var id = selects[0].id;
+            if (id >= $scope.gridOptions.rowData.length-1) return;
+            var element = $scope.gridOptions.rowData[id];
+            $scope.gridOptions.rowData.splice(id, 1);
+            $scope.gridOptions.rowData.splice(id+1, 0, element);
+            $scope.gridOptions.api.onNewRows();
+            $scope.gridOptions.api.selectIndex(id+1);
+          }
+        }
     $scope.selectedFile = 'Select a file below...';
 
     function rowClicked(params) {
@@ -55,6 +81,7 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
             path = node.data.name + '\\' + path;
         }
         $scope.selectedFile = path;
+        $scope.gridOptions.api.selectIndex(params.rowIndex);
     }
 
     function sizeCellStyle() {

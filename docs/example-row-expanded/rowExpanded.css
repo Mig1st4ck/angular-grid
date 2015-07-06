@@ -36,4 +36,6 @@
 .ag-row-expanded .ag-body-viewport {
     background-color: #ffffff;
 }
-
+.ag-row-selected {
+    background-color: #adadad;
+}
