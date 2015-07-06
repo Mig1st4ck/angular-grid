@@ -122,6 +122,9 @@
   border: 1px solid #000;
   background-color: #f0f0f0;
 }
+.ag-fresh .ag-filter-value {
+  margin-left: 4px;
+}
 .ag-fresh .ag-selection-checkbox {
   margin-left: 4px;
 }
