@@ -1,6 +1,6 @@
 /**
  * angular-grid - High performance and feature rich data grid for AngularJS
- * @version v1.11.4
+ * @version v1.11.5
  * @link http://www.angulargrid.com/
  * @license MIT
  */
@@ -3396,7 +3396,7 @@ var awk;
                 // var rowData = node.rowData;
                 var rowIsAGroup = node.group;
                 // try compiling as we insert rows
-                var newChildScope = this.createChildScopeOrNull(node.data);
+                var newChildScope = this.createChildScopeOrNull(node.data, node);
                 var ePinnedRow = this.createRowContainer(rowIndex, node, rowIsAGroup, newChildScope);
                 var eMainRow = this.createRowContainer(rowIndex, node, rowIsAGroup, newChildScope);
                 var that = this;
@@ -3436,7 +3436,7 @@ var awk;
                             api: this.gridOptionsWrapper.getApi()
                         };
                         var eGroupRow = that.cellRendererMap['expand'](params);
-                        eMainRow.style.height = (20 * node.parent.rows) + 'px';
+                        eMainRow.style.height = (this.gridOptionsWrapper.getRowHeight() * node.parent.rows) + 'px';
                         eMainRow.appendChild(eGroupRow);
                     }
                     if (node.group) {
@@ -3446,6 +3446,9 @@ var awk;
                             var valueGetter = that.createValueGetter(data, column.colDef, node);
                             that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
                         });
+                    }
+                    else if (!node.first) {
+                        return;
                     }
                 }
                 else {
@@ -3485,10 +3488,11 @@ var awk;
                     return utils.getValue(that.expressionService, data, colDef, node, api, context);
                 };
             };
-            RowRenderer.prototype.createChildScopeOrNull = function (data) {
+            RowRenderer.prototype.createChildScopeOrNull = function (data, node) {
                 if (this.gridOptionsWrapper.isAngularCompileRows()) {
                     var newChildScope = this.$scope.$new();
                     newChildScope.data = data;
+                    newChildScope.node = node;
                     return newChildScope;
                 }
                 else {

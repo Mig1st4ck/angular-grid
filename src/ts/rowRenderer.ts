@@ -323,7 +323,7 @@ module awk.grid {
             var rowIsAGroup = node.group;
 
             // try compiling as we insert rows
-            var newChildScope = this.createChildScopeOrNull(node.data);
+            var newChildScope = this.createChildScopeOrNull(node.data, node);
 
             var ePinnedRow = this.createRowContainer(rowIndex, node, rowIsAGroup, newChildScope);
             var eMainRow = this.createRowContainer(rowIndex, node, rowIsAGroup, newChildScope);
@@ -369,7 +369,7 @@ module awk.grid {
                         api: this.gridOptionsWrapper.getApi()
                     };
                     var eGroupRow = that.cellRendererMap['expand'](params);
-                    eMainRow.style.height = (20 * node.parent.rows) + 'px';
+                    eMainRow.style.height = (this.gridOptionsWrapper.getRowHeight() * node.parent.rows) + 'px';
                     eMainRow.appendChild(eGroupRow);
                 }
                 if (node.group) {
@@ -379,6 +379,8 @@ module awk.grid {
                         var valueGetter = that.createValueGetter(data, column.colDef, node);
                         that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
                     });
+                } else if (!node.first) {
+                  return;
                 }
             } else {
 
@@ -420,10 +422,11 @@ module awk.grid {
             };
         }
 
-        createChildScopeOrNull(data: any) {
+        createChildScopeOrNull(data: any, node: any) {
             if (this.gridOptionsWrapper.isAngularCompileRows()) {
                 var newChildScope = this.$scope.$new();
                 newChildScope.data = data;
+                newChildScope.node = node;
                 return newChildScope;
             } else {
                 return null;
@@ -1267,4 +1270,3 @@ module awk.grid {
         }
     }
 }
-

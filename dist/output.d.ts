@@ -469,7 +469,7 @@ declare module awk.grid {
         insertRow(node: any, rowIndex: any, mainRowWidth: any): void;
         getDataForNode(node: any): any;
         createValueGetter(data: any, colDef: any, node: any): () => any;
-        createChildScopeOrNull(data: any): any;
+        createChildScopeOrNull(data: any, node: any): any;
         compileAndAdd(container: any, rowIndex: any, element: any, scope: any): any;
         createCellFromColDef(isFirstColumn: any, column: any, valueGetter: any, node: any, rowIndex: any, eMainRow: any, ePinnedRow: any, $childScope: any, renderedRow: any): void;
         addClassesToRow(rowIndex: any, node: any, eRow: any): void;

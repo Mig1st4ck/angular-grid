@@ -37,6 +37,7 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
         enableColResize: true,
         enableSorting: true,
         rowHeight: 20,
+        angularCompileRows: true,
         icons: {
             groupExpanded: '<i class="fa fa-minus-square-o"/>',
             groupContracted: '<i class="fa fa-plus-square-o"/>'
@@ -95,7 +96,8 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
         var node = params.node;
 
 
-        var eText = document.createTextNode('TEXTO');
+        var eText = document.createElement('div');
+        eText.innerHTML = '2 + 1 = {{ 2 + 1 }}'
         eGroupCell.appendChild(eText);
 
         return eGroupCell;
