@@ -4,48 +4,23 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
 
     var rowData = [
         {
-            group: true,
-            rows: 5,
-            data: {
-                name: '5 Rows',
-                size: '123'
-            }
+          name: 'Afonso',
+          size: '123 Mb',
+          type: 'Dir'
         },
         {
-            group: true,
-            rows: 50,
-            data: {
-                name: '50 Rows',
-                size: '1333'
-            }
-        },
-        {
-            group: true,
-            rows: 3,
-            data: {
-                name: '5 Rows',
-                size: '1333'
-            }
+          name: 'Miguel',
+          size: '10 Kb',
+          type: 'Dir'
         }
     ];
-    var clear = $interval(function(){
-        var rows = parseInt(Math.random() * 10, 10);
-        rowData.push({
-            group: true,
-            rows: rows,
-            data: {
-                name: rows + ' Rows',
-                size: '----'
-            }
-        });
-        $scope.gridOptions.api.onNewRows();
-        //if (rowData.length > 20) $interval.cancel(clear);
-    }, 1000, 20);
 
     var columnDefs = [
         {headerName: "Name", field: "name", width: 250, cellRenderer: {
             renderer: 'group',
-            innerRenderer: function(params){ return ' ' + params.data.name; }
+            innerRenderer: function(params){
+              return ' ' + params.data.name;
+            }
         }},
         {headerName: "Size", field: "size", width: 70, cellStyle: sizeCellStyle},
         {headerName: "Type", field: "type", width: 150},
@@ -54,11 +29,10 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
 
     $scope.gridOptions = {
         expandRow: innerCellRenderer,
-
+        rowsAlreadyGrouped: true,
         columnDefs: columnDefs,
         rowData: rowData,
         rowSelection: 'multiple',
-        rowsAlreadyGrouped: true,
         enableColResize: true,
         enableSorting: true,
         rowHeight: 20,
@@ -68,7 +42,6 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
         },
         rowClicked: rowClicked,
         groupInnerRenderer: groupInnerRendererFunc
-
     };
 
     $scope.selectedFile = 'Select a file below...';
