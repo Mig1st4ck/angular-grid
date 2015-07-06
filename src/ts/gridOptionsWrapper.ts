@@ -68,6 +68,7 @@ module awk.grid {
         getDatasource() { return this.gridOptions.datasource; }
         getReady() { return this.gridOptions.ready; }
         getRowBuffer() { return this.gridOptions.rowBuffer; }
+        getExpandedRowsDefault() { return this.gridOptions.expandedRowsDefault || 0; }
         isEnableSorting() { return isTrue(this.gridOptions.enableSorting) || isTrue(this.gridOptions.enableServerSideSorting); }
         isEnableServerSideSorting() { return isTrue(this.gridOptions.enableServerSideSorting); }
         isEnableFilter() { return isTrue(this.gridOptions.enableFilter) || isTrue(this.gridOptions.enableServerSideFilter); }

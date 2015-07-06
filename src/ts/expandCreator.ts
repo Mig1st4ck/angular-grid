@@ -12,7 +12,7 @@ module awk.grid {
             return this.theInstance;
         }
 
-        group(rowNodes: any, groupedCols?: any, expandByDefault?: any) {
+        group(rowNodes: any, defaultExapanded?: number, expandByDefault?: any) {
             var node: any;
             for (var i = 0; i < rowNodes.length; i++) {
                 node = rowNodes[i];
@@ -21,6 +21,7 @@ module awk.grid {
                     first: true,
                     parent: node
                 }];
+                node.rows = node.rows || defaultExapanded;
                 if (node.rows) {
                     for (var y = 1; y < node.rows; y++) {
                         node.children.push({

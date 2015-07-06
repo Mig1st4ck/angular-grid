@@ -953,7 +953,7 @@ var awk;
                 }
                 return this.theInstance;
             };
-            ExpandCreator.prototype.group = function (rowNodes, groupedCols, expandByDefault) {
+            ExpandCreator.prototype.group = function (rowNodes, defaultExapanded, expandByDefault) {
                 var node;
                 for (var i = 0; i < rowNodes.length; i++) {
                     node = rowNodes[i];
@@ -962,6 +962,7 @@ var awk;
                         first: true,
                         parent: node
                     }];
+                    node.rows = node.rows || defaultExapanded;
                     if (node.rows) {
                         for (var y = 1; y < node.rows; y++) {
                             node.children.push({
@@ -1200,6 +1201,9 @@ var awk;
             };
             GridOptionsWrapper.prototype.getRowBuffer = function () {
                 return this.gridOptions.rowBuffer;
+            };
+            GridOptionsWrapper.prototype.getExpandedRowsDefault = function () {
+                return this.gridOptions.expandedRowsDefault || 0;
             };
             GridOptionsWrapper.prototype.isEnableSorting = function () {
                 return isTrue(this.gridOptions.enableSorting) || isTrue(this.gridOptions.enableServerSideSorting);
@@ -5177,7 +5181,7 @@ var awk;
                         this.allRows = nodes;
                         this.gridOptionsWrapper.gridOptions.rowsAlreadyGrouped = true;
                     }
-                    this.rowsAfterGroup = expandCreator.group(this.allRows);
+                    this.rowsAfterGroup = expandCreator.group(this.allRows, this.gridOptionsWrapper.getExpandedRowsDefault());
                 }
             };
             // private

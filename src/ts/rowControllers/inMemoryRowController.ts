@@ -12,7 +12,7 @@ module awk.grid {
 
     export class InMemoryRowController {
 
-        gridOptionsWrapper: any;
+        gridOptionsWrapper: awk.grid.GridOptionsWrapper;
         columnModel: any;
         angularGrid: any;
         filterManager: any;
@@ -396,7 +396,7 @@ module awk.grid {
                     this.allRows = nodes;
                     this.gridOptionsWrapper.gridOptions.rowsAlreadyGrouped = true;
                 }
-                this.rowsAfterGroup = expandCreator.group(this.allRows);
+                this.rowsAfterGroup = expandCreator.group(this.allRows, this.gridOptionsWrapper.getExpandedRowsDefault());
             }
         }
 

@@ -29,6 +29,7 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
 
     $scope.gridOptions = {
         expandRow: innerCellRenderer,
+        expandedRowsDefault: 3,
         rowsAlreadyGrouped: true,
         columnDefs: columnDefs,
         rowData: rowData,

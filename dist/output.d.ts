@@ -105,7 +105,7 @@ declare module awk.grid {
     class ExpandCreator {
         static theInstance: ExpandCreator;
         static getInstance(): ExpandCreator;
-        group(rowNodes: any, groupedCols?: any, expandByDefault?: any): any;
+        group(rowNodes: any, defaultExapanded?: number, expandByDefault?: any): any;
         isExpanded(expandByDefault: any, level: any): boolean;
     }
 }
@@ -171,6 +171,7 @@ declare module awk.grid {
         getDatasource(): any;
         getReady(): (api: any) => void;
         getRowBuffer(): number;
+        getExpandedRowsDefault(): number;
         isEnableSorting(): boolean;
         isEnableServerSideSorting(): boolean;
         isEnableFilter(): boolean;
@@ -554,7 +555,7 @@ declare module awk.grid {
 }
 declare module awk.grid {
     class InMemoryRowController {
-        gridOptionsWrapper: any;
+        gridOptionsWrapper: awk.grid.GridOptionsWrapper;
         columnModel: any;
         angularGrid: any;
         filterManager: any;
@@ -924,6 +925,7 @@ declare module awk.grid {
 }
 declare module awk.grid {
     interface GridOptions {
+        expandedRowsDefault: number;
         rowSelection?: string;
         rowDeselection?: boolean;
         context?: any;
