@@ -102,6 +102,14 @@ declare module awk.grid {
     }
 }
 declare module awk.grid {
+    class ExpandCreator {
+        static theInstance: ExpandCreator;
+        static getInstance(): ExpandCreator;
+        group(rowNodes: any, groupedCols?: any, expandByDefault?: any): any;
+        isExpanded(expandByDefault: any, level: any): boolean;
+    }
+}
+declare module awk.grid {
     class ExpressionService {
         expressionToFunctionCache: any;
         evaluate(expression: any, params: any): any;
@@ -122,6 +130,7 @@ declare module awk.grid {
         isToolPanelSuppressPivot(): boolean;
         isToolPanelSuppressValues(): boolean;
         isRowsAlreadyGrouped(): boolean;
+        isRowsAlreadyExpanded(): boolean;
         isGroupSelectsChildren(): boolean;
         isGroupHidePivotColumns(): boolean;
         isGroupIncludeFooter(): boolean;
@@ -168,6 +177,7 @@ declare module awk.grid {
         isEnableServerSideFilter(): boolean;
         setSelectedRows(newSelectedRows: any): any;
         setSelectedNodesById(newSelectedNodes: any): any;
+        isDoInternalExpanding(): any;
         getIcons(): any;
         getGroupRowInnerRenderer(): (params: any) => void;
         getColWidth(): number;
@@ -572,6 +582,7 @@ declare module awk.grid {
         recursivelyResetSort(rowNodes: any): void;
         sortList(nodes: any, sortOptions: any): void;
         doGrouping(): void;
+        doExpanding(): void;
         doFilter(): void;
         filterItems(rowNodes: any, quickFilterPresent: any, advancedFilterPresent: any): any;
         recursivelyResetFilter(nodes: any): void;
@@ -921,6 +932,7 @@ declare module awk.grid {
         toolPanelSuppressPivot?: boolean;
         toolPanelSuppressValues?: boolean;
         rowsAlreadyGrouped?: boolean;
+        rowsAlreadyExpanded?: boolean;
         groupSelectsChildren?: boolean;
         groupHidePivotColumns?: boolean;
         groupIncludeFooter?: boolean;
@@ -977,6 +989,7 @@ declare module awk.grid {
         headerHeight?: number;
         pinnedColumnCount?: number;
         localeText?: any;
+        expandRow: any;
     }
 }
 declare module awk.grid {

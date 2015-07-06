@@ -944,6 +944,52 @@ var awk;
 (function (awk) {
     var grid;
     (function (grid) {
+        var ExpandCreator = (function () {
+            function ExpandCreator() {
+            }
+            ExpandCreator.getInstance = function () {
+                if (!this.theInstance) {
+                    this.theInstance = new ExpandCreator();
+                }
+                return this.theInstance;
+            };
+            ExpandCreator.prototype.group = function (rowNodes, groupedCols, expandByDefault) {
+                var node;
+                for (var i = 0; i < rowNodes.length; i++) {
+                    node = rowNodes[i];
+                    node.group = true;
+                    node.children = [{
+                        first: true,
+                        parent: node
+                    }];
+                    if (node.rows) {
+                        for (var y = 1; y < node.rows; y++) {
+                            node.children.push({
+                                first: false
+                            });
+                        }
+                        ;
+                    }
+                }
+                return rowNodes;
+            };
+            ExpandCreator.prototype.isExpanded = function (expandByDefault, level) {
+                if (typeof expandByDefault === 'number') {
+                    return level < expandByDefault;
+                }
+                else {
+                    return expandByDefault === true || expandByDefault === 'true';
+                }
+            };
+            return ExpandCreator;
+        })();
+        grid.ExpandCreator = ExpandCreator;
+    })(grid = awk.grid || (awk.grid = {}));
+})(awk || (awk = {}));
+var awk;
+(function (awk) {
+    var grid;
+    (function (grid) {
         var ExpressionService = (function () {
             function ExpressionService() {
                 this.expressionToFunctionCache = {};
@@ -1031,6 +1077,9 @@ var awk;
             };
             GridOptionsWrapper.prototype.isRowsAlreadyGrouped = function () {
                 return isTrue(this.gridOptions.rowsAlreadyGrouped);
+            };
+            GridOptionsWrapper.prototype.isRowsAlreadyExpanded = function () {
+                return isTrue(this.gridOptions.rowsAlreadyExpanded);
             };
             GridOptionsWrapper.prototype.isGroupSelectsChildren = function () {
                 return isTrue(this.gridOptions.groupSelectsChildren);
@@ -1169,6 +1218,9 @@ var awk;
             };
             GridOptionsWrapper.prototype.setSelectedNodesById = function (newSelectedNodes) {
                 return this.gridOptions.selectedNodesById = newSelectedNodes;
+            };
+            GridOptionsWrapper.prototype.isDoInternalExpanding = function () {
+                return !this.isRowsAlreadyExpanded() && this.gridOptions.expandRow;
             };
             GridOptionsWrapper.prototype.getIcons = function () {
                 return this.gridOptions.icons;
@@ -3120,7 +3172,8 @@ var awk;
                 this.templateService = templateService;
                 this.findAllElements(gridPanel);
                 this.cellRendererMap = {
-                    'group': grid.groupCellRendererFactory(gridOptionsWrapper, selectionRendererFactory)
+                    'group': grid.groupCellRendererFactory(gridOptionsWrapper, selectionRendererFactory),
+                    'expand': gridOptions.expandRow
                 };
                 // map of row ids to row objects. keeps track of which elements
                 // are rendered for which rows in the dom. each row object has:
@@ -3368,6 +3421,27 @@ var awk;
                     }
                     else {
                         eMainRow.appendChild(eGroupRow);
+                    }
+                }
+                else if (this.gridOptionsWrapper.isDoInternalExpanding()) {
+                    if (node.first) {
+                        var params = {
+                            node: node.parent,
+                            data: node.parent.data,
+                            rowIndex: rowIndex,
+                            api: this.gridOptionsWrapper.getApi()
+                        };
+                        var eGroupRow = that.cellRendererMap['expand'](params);
+                        eMainRow.style.height = (20 * node.parent.rows) + 'px';
+                        eMainRow.appendChild(eGroupRow);
+                    }
+                    if (node.group) {
+                        columns.forEach(function (column, index) {
+                            var firstCol = index === 0;
+                            var data = that.getDataForNode(node);
+                            var valueGetter = that.createValueGetter(data, column.colDef, node);
+                            that.createCellFromColDef(firstCol, column, valueGetter, node, rowIndex, eMainRow, ePinnedRow, newChildScope, renderedRow);
+                        });
                     }
                 }
                 else {
@@ -4763,6 +4837,7 @@ var awk;
 /// <reference path="../utils.ts" />
 /// <reference path="../constants.ts" />
 /// <reference path="../groupCreator.ts" />
+/// <reference path="../expandCreator.ts" />
 var awk;
 (function (awk) {
     var grid;
@@ -4770,6 +4845,7 @@ var awk;
         var utils = grid.Utils;
         var constants = grid.Constants;
         var groupCreator = grid.GroupCreator.getInstance();
+        var expandCreator = grid.ExpandCreator.getInstance();
         var InMemoryRowController = (function () {
             function InMemoryRowController() {
                 this.createModel();
@@ -5088,6 +5164,12 @@ var awk;
                 this.rowsAfterGroup = rowsAfterGroup;
             };
             // private
+            InMemoryRowController.prototype.doExpanding = function () {
+                if (this.gridOptionsWrapper.isDoInternalExpanding()) {
+                    this.rowsAfterGroup = expandCreator.group(this.allRows);
+                }
+            };
+            // private
             InMemoryRowController.prototype.doFilter = function () {
                 var doingFilter;
                 if (this.gridOptionsWrapper.isEnableServerSideFilter()) {
@@ -5170,6 +5252,8 @@ var awk;
                 this.allRows = nodes;
                 // aggregate here, so filters have the agg data ready
                 this.doGrouping();
+                // process here the expanded
+                this.doExpanding();
             };
             // add in index - this is used by the selectionController - so quick
             // to look up selected rows
