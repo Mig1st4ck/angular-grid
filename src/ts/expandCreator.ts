@@ -12,8 +12,12 @@ module awk.grid {
             return this.theInstance;
         }
 
-        group(rowNodes: any, defaultExapanded?: number, expandByDefault?: any) {
+        group(rowNodes: any, defaultExapanded?: any, expandByDefault?: any) {
             var node: any;
+            var call = (n: any) => { return n.rows || defaultExapanded; };
+            if (typeof defaultExapanded === 'function') {
+              call = defaultExapanded;
+            }
             for (var i = 0; i < rowNodes.length; i++) {
                 node = rowNodes[i];
                 node.group = true;
@@ -21,7 +25,7 @@ module awk.grid {
                     first: true,
                     parent: node
                 }];
-                node.rows = node.rows || defaultExapanded;
+                node.rows = call(node);
                 if (node.rows) {
                     for (var y = 1; y < node.rows; y++) {
                         node.children.push({

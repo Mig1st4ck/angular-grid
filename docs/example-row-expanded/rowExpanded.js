@@ -6,12 +6,14 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
         {
           name: 'Afonso',
           size: '123 Mb',
-          type: 'Dir'
+          type: 'Dir',
+          rows: 5
         },
         {
           name: 'Miguel',
           size: '10 Kb',
-          type: 'Dir'
+          type: 'Dir',
+          rows: 8
         }
     ];
 
@@ -29,7 +31,7 @@ rowExpandedModule.controller('rowExpandedController', function($scope, $interval
 
     $scope.gridOptions = {
         expandRow: innerCellRenderer,
-        expandedRowsDefault: 3,
+        expandedRowsDefault: function(node) { return node.data.rows; },
         rowsAlreadyGrouped: true,
         columnDefs: columnDefs,
         rowData: rowData,

@@ -105,7 +105,7 @@ declare module awk.grid {
     class ExpandCreator {
         static theInstance: ExpandCreator;
         static getInstance(): ExpandCreator;
-        group(rowNodes: any, defaultExapanded?: number, expandByDefault?: any): any;
+        group(rowNodes: any, defaultExapanded?: any, expandByDefault?: any): any;
         isExpanded(expandByDefault: any, level: any): boolean;
     }
 }
