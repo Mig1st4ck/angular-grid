@@ -375,7 +375,10 @@ module awk.grid {
 
             if (doingGrouping) {
                 var expandByDefault = this.gridOptionsWrapper.getGroupDefaultExpanded();
-                rowsAfterGroup = groupCreator.group(this.allRows, groupedCols, expandByDefault);
+                var api = this.gridOptionsWrapper.getApi();
+                var context = this.gridOptionsWrapper.getContext();
+                rowsAfterGroup = groupCreator.group(this.allRows, groupedCols, expandByDefault,
+                    this.expressionService, api, context);
             } else {
                 rowsAfterGroup = this.allRows;
             }
@@ -467,7 +470,7 @@ module awk.grid {
         // private
         // rows: the rows to put into the model
         // firstId: the first id to use, used for paging, where we are not on the first page
-        setAllRows(rows: any, firstId: any) {
+        setAllRows(rows: any, firstId?: any) {
             var nodes: any;
             if (this.gridOptionsWrapper.isRowsAlreadyGrouped()) {
                 nodes = rows;
@@ -614,9 +617,10 @@ module awk.grid {
         // private
         aggregateRowForQuickFilter(node: any) {
             var aggregatedText = '';
+            var that = this;
             this.columnModel.getAllColumns().forEach(function (colDefWrapper: any) {
                 var data = node.data;
-                var value = data ? data[colDefWrapper.colDef.field] : null;
+                var value = that.getValue(data,  colDefWrapper.colDef, node);
                 if (value && value !== '') {
                     aggregatedText = aggregatedText + value.toString().toUpperCase() + "_";
                 }

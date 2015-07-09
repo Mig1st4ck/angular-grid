@@ -14,6 +14,8 @@ declare module awk.grid {
         static addChangeListener(element: any, listener: any): void;
         static makeNull(value: any): any;
         static removeAllChildren(node: any): void;
+        static removeElement(parent: any, cssSelector: string): void;
+        static removeFromParent(node: any): void;
         static isVisible(element: any): boolean;
         static loadTemplate(template: any): Node;
         static querySelectorAll_addCssClass(eParent: any, selector: any, cssClass: any): void;
@@ -189,55 +191,63 @@ declare module awk.grid {
     }
 }
 declare module awk.grid {
-    class TextFilter {
-        filterParams: any;
-        filterChangedCallback: any;
-        localeTextFunc: any;
-        valueGetter: any;
-        filterText: any;
-        filterType: any;
-        api: any;
-        eGui: any;
-        eFilterTextField: any;
-        eTypeSelect: any;
+    class TextFilter implements Filter {
+        private filterParams;
+        private filterChangedCallback;
+        private localeTextFunc;
+        private valueGetter;
+        private filterText;
+        private filterType;
+        private api;
+        private eGui;
+        private eFilterTextField;
+        private eTypeSelect;
+        private applyActive;
+        private eApplyButton;
         constructor(params: any);
         onNewRowsLoaded(): void;
         afterGuiAttached(): void;
         doesFilterPass(node: any): boolean;
         getGui(): any;
         isFilterActive(): boolean;
-        createTemplate(): string;
-        createGui(): void;
-        onTypeChanged(): void;
-        onFilterChanged(): void;
-        createApi(): void;
-        getApi(): any;
+        private createTemplate();
+        private createGui();
+        private setupApply();
+        private onTypeChanged();
+        private onFilterChanged();
+        private filterChanged();
+        private createApi();
+        private getApi();
     }
 }
 declare module awk.grid {
-    class NumberFilter {
-        filterParams: any;
-        filterChangedCallback: any;
-        localeTextFunc: any;
-        valueGetter: any;
-        filterNumber: any;
-        filterType: any;
-        api: any;
-        eGui: any;
-        eFilterTextField: any;
-        eTypeSelect: any;
+    class NumberFilter implements Filter {
+        private filterParams;
+        private filterChangedCallback;
+        private localeTextFunc;
+        private valueGetter;
+        private filterNumber;
+        private filterType;
+        private api;
+        private eGui;
+        private eFilterTextField;
+        private eTypeSelect;
+        private applyActive;
+        private eApplyButton;
         constructor(params: any);
         onNewRowsLoaded(): void;
         afterGuiAttached(): void;
         doesFilterPass(node: any): boolean;
         getGui(): any;
         isFilterActive(): boolean;
-        createTemplate(): string;
-        createGui(): void;
-        onTypeChanged(): void;
-        onFilterChanged(): void;
-        createApi(): void;
-        getApi(): any;
+        private createTemplate();
+        private createGui();
+        private setupApply();
+        private onTypeChanged();
+        private filterChanged();
+        private onFilterChanged();
+        private createApi();
+        private getApi();
     }
 }
 declare module awk.grid {
@@ -274,45 +284,49 @@ declare module awk.grid {
     }
 }
 declare module awk.grid {
-    class SetFilter {
-        eGui: any;
-        filterParams: any;
-        rowHeight: any;
-        model: any;
-        filterChangedCallback: any;
-        valueGetter: any;
-        rowsInBodyContainer: any;
-        colDef: any;
-        localeTextFunc: any;
-        cellRenderer: any;
-        eListContainer: any;
-        eFilterValueTemplate: any;
-        eSelectAll: any;
-        eListViewport: any;
-        eMiniFilter: any;
-        api: any;
+    class SetFilter implements Filter {
+        private eGui;
+        private filterParams;
+        private rowHeight;
+        private model;
+        private filterChangedCallback;
+        private valueGetter;
+        private rowsInBodyContainer;
+        private colDef;
+        private localeTextFunc;
+        private cellRenderer;
+        private eListContainer;
+        private eFilterValueTemplate;
+        private eSelectAll;
+        private eListViewport;
+        private eMiniFilter;
+        private api;
+        private applyActive;
+        private eApplyButton;
         constructor(params: any);
         afterGuiAttached(): void;
-        isFilterActive(): any;
-        doesFilterPass(node: any): any;
+        isFilterActive(): boolean;
+        doesFilterPass(node: any): boolean;
         getGui(): any;
         onNewRowsLoaded(): void;
-        createTemplate(): string;
-        createGui(): void;
-        setContainerHeight(): void;
-        drawVirtualRows(): void;
-        ensureRowsRendered(start: any, finish: any): void;
-        removeVirtualRows(rowsToRemove: any): void;
-        insertRow(value: any, rowIndex: any): void;
+        private createTemplate();
+        private createGui();
+        private setupApply();
+        private setContainerHeight();
+        private drawVirtualRows();
+        private ensureRowsRendered(start, finish);
+        private removeVirtualRows(rowsToRemove);
+        private insertRow(value, rowIndex);
         onCheckboxClicked(eCheckbox: any, value: any): void;
-        onMiniFilterChanged(): void;
-        refreshVirtualRows(): void;
-        clearVirtualRows(): void;
-        onSelectAll(): void;
-        updateAllCheckboxes(checked: any): void;
-        addScrollListener(): void;
+        private filterChanged();
+        private onMiniFilterChanged();
+        private refreshVirtualRows();
+        private clearVirtualRows();
+        private onSelectAll();
+        private updateAllCheckboxes(checked);
+        private addScrollListener();
         getApi(): any;
-        createApi(): void;
+        private createApi();
     }
 }
 declare module awk.grid {
@@ -327,33 +341,28 @@ declare module awk.grid {
 }
 declare module awk.grid {
     class FilterManager {
-        $compile: any;
-        $scope: any;
-        gridOptionsWrapper: any;
-        grid: any;
-        allFilters: any;
-        expressionService: any;
-        columnModel: any;
-        rowModel: any;
+        private $compile;
+        private $scope;
+        private gridOptionsWrapper;
+        private grid;
+        private allFilters;
+        private expressionService;
+        private columnModel;
+        private rowModel;
         init(grid: any, gridOptionsWrapper: any, $compile: any, $scope: any, expressionService: any, columnModel: any): void;
         setFilterModel(model: any): void;
-        setModelOnFilterWrapper(filter: any, newModel: any): void;
+        private setModelOnFilterWrapper(filter, newModel);
         getFilterModel(): any;
         setRowModel(rowModel: any): void;
-        isFilterPresent(): boolean;
-        isFilterPresentForCol(colId: any): any;
-        doesFilterPass(node: any): boolean;
+        private isFilterPresent();
+        private isFilterPresentForCol(colId);
+        private doesFilterPass(node);
         onNewRowsLoaded(): void;
-        createValueGetter(colDef: any): (node: any) => any;
+        private createValueGetter(colDef);
         getFilterApi(column: any): any;
-        getOrCreateFilterWrapper(column: any): any;
-        createFilterWrapper(column: any): {
-            column: any;
-            filter: any;
-            scope: any;
-            gui: any;
-        };
-        showFilter(column: any, eventSource: any): void;
+        private getOrCreateFilterWrapper(column);
+        private createFilterWrapper(column);
+        private showFilter(column, eventSource);
     }
 }
 declare module awk.grid {
@@ -373,7 +382,7 @@ declare module awk.grid {
         setRowModel(rowModel: any): void;
         deselectAll(): void;
         selectAll(): void;
-        selectNode(node: any, tryMulti: any, suppressEvents: any): void;
+        selectNode(node: any, tryMulti: any, suppressEvents?: any): void;
         recursivelySelectAllChildren(node: any, suppressEvents?: any): boolean;
         recursivelyDeselectAllChildren(node: any): void;
         doWorkOfSelectNode(node: any, suppressEvents: any): boolean;
@@ -427,20 +436,26 @@ declare module awk.grid {
 }
 declare module awk.grid {
     class RowRenderer {
-        gridOptions: any;
+        gridOptions: GridOptions;
         columnModel: any;
-        gridOptionsWrapper: any;
-        angularGrid: any;
-        selectionRendererFactory: any;
-        gridPanel: any;
+        gridOptionsWrapper: GridOptionsWrapper;
+        angularGrid: Grid;
+        selectionRendererFactory: SelectionRendererFactory;
+        gridPanel: GridPanel;
         $compile: any;
         $scope: any;
-        selectionController: any;
-        expressionService: any;
-        templateService: any;
-        cellRendererMap: any;
-        renderedRows: any;
-        renderedRowStartEditingListeners: any;
+        selectionController: SelectionController;
+        expressionService: ExpressionService;
+        templateService: TemplateService;
+        cellRendererMap: {
+            [key: string]: any;
+        };
+        private renderedRows;
+        renderedRowStartEditingListeners: {
+            [key: string]: {
+                [key: string]: any;
+            };
+        };
         editingCell: any;
         rowModel: any;
         eBodyContainer: any;
@@ -450,11 +465,11 @@ declare module awk.grid {
         firstVirtualRenderedRow: any;
         lastVirtualRenderedRow: any;
         focusedCell: any;
-        init(gridOptions: any, columnModel: any, gridOptionsWrapper: any, gridPanel: any, angularGrid: any, selectionRendererFactory: any, $compile: any, $scope: any, selectionController: any, expressionService: any, templateService: any): void;
+        init(gridOptions: GridOptions, columnModel: any, gridOptionsWrapper: GridOptionsWrapper, gridPanel: GridPanel, angularGrid: Grid, selectionRendererFactory: SelectionRendererFactory, $compile: any, $scope: any, selectionController: SelectionController, expressionService: ExpressionService, templateService: TemplateService): void;
         setRowModel(rowModel: any): void;
         setMainRowWidths(): void;
         findAllElements(gridPanel: any): void;
-        refreshView(refreshFromIndex: any): void;
+        refreshView(refreshFromIndex?: any): void;
         softRefreshView(): void;
         softRefreshCell(eGridCell: any, isFirstColumn: any, node: any, column: any, scope: any, rowIndex: any): void;
         rowDataChanged(rows: any): void;
@@ -470,11 +485,11 @@ declare module awk.grid {
         getDataForNode(node: any): any;
         createValueGetter(data: any, colDef: any, node: any): () => any;
         createChildScopeOrNull(data: any, node: any): any;
-        compileAndAdd(container: any, rowIndex: any, element: any, scope: any): any;
+        compileAndAdd(container: any, element: any, scope: any): any;
         createCellFromColDef(isFirstColumn: any, column: any, valueGetter: any, node: any, rowIndex: any, eMainRow: any, ePinnedRow: any, $childScope: any, renderedRow: any): void;
         addClassesToRow(rowIndex: any, node: any, eRow: any): void;
         createRowContainer(rowIndex: any, node: any, groupRow: any, $scope: any): HTMLDivElement;
-        getIndexOfRenderedNode(node: any): any;
+        getIndexOfRenderedNode(node: any): number;
         createGroupElement(node: any, rowIndex: any, padding: any): any;
         putDataIntoCell(column: any, value: any, valueGetter: any, node: any, $childScope: any, eSpanWithValue: any, eGridCell: any, rowIndex: any, refreshCellFunction: any): void;
         useCellRenderer(column: any, value: any, node: any, $childScope: any, eSpanWithValue: any, rowIndex: any, refreshCellFunction: any, valueGetter: any, eGridCell: any): void;
@@ -549,7 +564,7 @@ declare module awk.grid {
     class GroupCreator {
         static theInstance: GroupCreator;
         static getInstance(): GroupCreator;
-        group(rowNodes: any, groupedCols: any, expandByDefault: any): any;
+        group(rowNodes: any, groupedCols: any, expandByDefault: any, expressionService: ExpressionService, api: GridApi, context: any): any;
         isExpanded(expandByDefault: any, level: any): boolean;
     }
 }
@@ -587,7 +602,7 @@ declare module awk.grid {
         doFilter(): void;
         filterItems(rowNodes: any, quickFilterPresent: any, advancedFilterPresent: any): any;
         recursivelyResetFilter(nodes: any): void;
-        setAllRows(rows: any, firstId: any): void;
+        setAllRows(rows: any, firstId?: any): void;
         recursivelyAddIdToNodes(nodes: any, index: any): any;
         recursivelyCheckUserProvidedNodes(nodes: any, parent: any, level: any): void;
         getTotalChildCount(rowNodes: any): number;
@@ -995,38 +1010,101 @@ declare module awk.grid {
     }
 }
 declare module awk.grid {
+    class GridApi {
+        private grid;
+        private rowRenderer;
+        private headerRenderer;
+        private filterManager;
+        private columnController;
+        private inMemoryRowController;
+        private selectionController;
+        private gridOptionsWrapper;
+        private gridPanel;
+        constructor(grid: Grid, rowRenderer: RowRenderer, headerRenderer: HeaderRenderer, filterManager: FilterManager, columnController: ColumnController, inMemoryRowController: InMemoryRowController, selectionController: SelectionController, gridOptionsWrapper: GridOptionsWrapper, gridPanel: GridPanel);
+        setDatasource(datasource: any): void;
+        onNewDatasource(): void;
+        setRows(rows: any): void;
+        onNewRows(): void;
+        onNewCols(): void;
+        unselectAll(): void;
+        refreshView(): void;
+        softRefreshView(): void;
+        refreshGroupRows(): void;
+        refreshHeader(): void;
+        getModel(): any;
+        onGroupExpandedOrCollapsed(refreshFromIndex: any): void;
+        expandAll(): void;
+        collapseAll(): void;
+        addVirtualRowListener(rowIndex: any, callback: any): void;
+        rowDataChanged(rows: any): void;
+        setQuickFilter(newFilter: any): void;
+        selectIndex(index: any, tryMulti: any, suppressEvents: any): void;
+        deselectIndex(index: any): void;
+        selectNode(node: any, tryMulti: any, suppressEvents: any): void;
+        deselectNode(node: any): void;
+        selectAll(): void;
+        deselectAll(): void;
+        recomputeAggregates(): void;
+        sizeColumnsToFit(): void;
+        showLoading(show: any): void;
+        isNodeSelected(node: any): boolean;
+        getSelectedNodes(): any;
+        getBestCostNodeSelection(): any;
+        ensureColIndexVisible(index: any): void;
+        ensureIndexVisible(index: any): void;
+        ensureNodeVisible(comparator: any): void;
+        forEachInMemory(callback: any): void;
+        getFilterApiForColDef(colDef: any): any;
+        getFilterApi(key: any): any;
+        getColumnDef(key: any): any;
+        onFilterChanged(): void;
+        setSortModel(sortModel: any): void;
+        getSortModel(): any;
+        setFilterModel(model: any): void;
+        getFilterModel(): any;
+        getFocusedCell(): any;
+        setFocusedCell(rowIndex: any, colIndex: any): void;
+        showToolPanel(show: any): void;
+        isToolPanelShowing(): boolean;
+        hideColumn(colId: any, hide: any): void;
+        hideColumns(colIds: any, hide: any): void;
+        getColumnState(): any;
+        setColumnState(state: any): void;
+        doLayout(): void;
+    }
+}
+declare module awk.grid {
     class Grid {
-        virtualRowCallbacks: any;
-        gridOptions: GridOptions;
-        gridOptionsWrapper: any;
-        quickFilter: any;
-        scrollWidth: any;
-        inMemoryRowController: any;
-        doingVirtualPaging: any;
-        paginationController: any;
-        virtualPageRowController: any;
-        rowModel: any;
-        finished: any;
-        selectionController: any;
-        columnController: any;
+        private virtualRowCallbacks;
+        private gridOptions;
+        private gridOptionsWrapper;
+        private quickFilter;
+        private inMemoryRowController;
+        private doingVirtualPaging;
+        private paginationController;
+        private virtualPageRowController;
+        private finished;
+        private selectionController;
+        private columnController;
+        private rowRenderer;
+        private headerRenderer;
+        private filterManager;
+        private toolPanel;
+        private gridPanel;
+        private eRootPanel;
+        private toolPanelShowing;
+        private doingPagination;
         columnModel: any;
-        rowRenderer: any;
-        headerRenderer: any;
-        filterManager: any;
-        eToolPanel: any;
-        gridPanel: any;
-        eRootPanel: any;
-        toolPanelShowing: any;
-        doingPagination: any;
+        rowModel: any;
         constructor(eGridDiv: any, gridOptions: any, $scope: any, $compile: any, quickFilterOnScope: any);
         periodicallyDoLayout(): void;
         setupComponents($scope: any, $compile: any, eUserProvidedDiv: any): void;
         showToolPanel(show: any): void;
-        isToolPanelShowing(): any;
+        isToolPanelShowing(): boolean;
         setDatasource(datasource?: any): void;
         refreshHeaderAndBody(): void;
         setFinished(): void;
-        getQuickFilter(): any;
+        getQuickFilter(): string;
         onQuickFilterChanged(newFilter: any): void;
         onFilterChanged(): void;
         onRowClicked(event: any, rowIndex: any, node: any): void;
@@ -1036,7 +1114,6 @@ declare module awk.grid {
         setRows(rows?: any, firstId?: any): void;
         ensureNodeVisible(comparator: any): void;
         getFilterModel(): any;
-        addApi(): void;
         setFocusedCell(rowIndex: any, colIndex: any): void;
         getSortModel(): any;
         setSortModel(sortModel: any): void;
@@ -1053,3 +1130,12 @@ declare module awk.grid {
 declare var angular: any;
 declare var exports: any;
 declare var module: any;
+declare module awk {
+    interface Filter {
+        getGui(): any;
+        isFilterActive(): boolean;
+        doesFilterPass(params: any): boolean;
+        afterGuiAttached?(): void;
+        onNewRowsLoaded?(): void;
+    }
+}

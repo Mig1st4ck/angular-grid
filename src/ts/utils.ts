@@ -152,6 +152,16 @@ module awk.grid {
             }
         }
 
+        static removeElement(parent: any, cssSelector: string) {
+            this.removeFromParent(parent.querySelector(cssSelector));
+        }
+
+        static removeFromParent(node: any) {
+            if (node && node.parentNode) {
+                node.parentNode.removeChild(node);
+            }
+        }
+
         static isVisible(element: any) {
             return (element.offsetParent !== null)
         }
@@ -163,18 +173,6 @@ module awk.grid {
             tempDiv.innerHTML = template;
             return tempDiv.firstChild;
         }
-
-//if passed '42px' then returns the number 42
-//        pixelStringToNumber(val: any) {
-//            if (typeof val === "string") {
-//                if (val.indexOf("px") >= 0) {
-//                    val.replace("px", "");
-//                }
-//                return parseInt(val);
-//            } else {
-//                return val;
-//            }
-//        }
 
         static querySelectorAll_addCssClass(eParent: any, selector: any, cssClass: any) {
             var eRows = eParent.querySelectorAll(selector);
