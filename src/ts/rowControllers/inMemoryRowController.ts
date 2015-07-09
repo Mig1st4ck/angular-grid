@@ -12,7 +12,7 @@ module awk.grid {
 
     export class InMemoryRowController {
 
-        gridOptionsWrapper: awk.grid.GridOptionsWrapper;
+        gridOptionsWrapper: any;
         columnModel: any;
         angularGrid: any;
         filterManager: any;
