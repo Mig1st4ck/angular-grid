@@ -1,6 +1,6 @@
 /**
  * angular-grid - High performance and feature rich data grid for AngularJS
- * @version v1.11.8
+ * @version v1.11.9
  * @link http://www.angulargrid.com/
  * @license MIT
  */
@@ -5222,9 +5222,24 @@ var awk;
             // private
             InMemoryRowController.prototype.doExpanding = function () {
                 if (this.gridOptionsWrapper.isDoInternalExpanding()) {
-                    if (!this.gridOptionsWrapper.isRowsAlreadyExpanded()) {
-                        this.gridOptionsWrapper.gridOptions.rowsAlreadyGrouped = true;
+                    this.gridOptionsWrapper.gridOptions.rowsAlreadyGrouped = true;
+                    var nodes = [];
+                    for (var i = 0; i < (this.allRows || []).length; i++) {
+                        var node = this.allRows[i];
+                        if (typeof node.data === 'object') {
+                            // its alread a grouped
+                            nodes[i] = node;
+                            continue;
+                        }
+                        nodes[i] = {
+                            data: node,
+                            id: node.id,
+                            level: node.level
+                        };
+                        delete node.id;
+                        delete node.level;
                     }
+                    this.allRows = nodes;
                     this.rowsAfterGroup = expandCreator.group(this.allRows, this.gridOptionsWrapper.getExpandedRowsDefault());
                 }
             };
