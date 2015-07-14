@@ -570,7 +570,7 @@ declare module awk.grid {
 }
 declare module awk.grid {
     class InMemoryRowController {
-        gridOptionsWrapper: awk.grid.GridOptionsWrapper;
+        gridOptionsWrapper: any;
         columnModel: any;
         angularGrid: any;
         filterManager: any;
@@ -908,10 +908,9 @@ declare module awk.grid {
     class ValuesSelectionPanel {
         gridOptionsWrapper: any;
         columnController: any;
-        api: any;
         cColumnList: any;
         layout: any;
-        constructor(columnController: any, gridOptionsWrapper: any, api: any);
+        constructor(columnController: any, gridOptionsWrapper: any);
         columnsChanged(newColumns: any, newGroupedColumns: any, newValuesColumns: any): void;
         addDragSource(dragSource: any): void;
         cellRenderer(params: any): HTMLSpanElement;
@@ -935,7 +934,7 @@ declare module awk.grid {
     class ToolPanel {
         layout: any;
         constructor();
-        init(columnController: any, inMemoryRowController: any, gridOptionsWrapper: any, api: any): void;
+        init(columnController: any, inMemoryRowController: any, gridOptionsWrapper: any): void;
     }
 }
 declare module awk.grid {

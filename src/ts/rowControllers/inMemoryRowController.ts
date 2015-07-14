@@ -389,16 +389,6 @@ module awk.grid {
         doExpanding() {
             if (this.gridOptionsWrapper.isDoInternalExpanding()) {
                 if (!this.gridOptionsWrapper.isRowsAlreadyExpanded()) {
-                    var nodes: any[] = [];
-                    for (var i = 0; i < (this.allRows||[]).length; i++) {
-                        var node = this.allRows[i];
-                        nodes[i] = {
-                            data: node,
-                            id: node.id,
-                            level: node.level
-                        };
-                    }
-                    this.allRows = nodes;
                     this.gridOptionsWrapper.gridOptions.rowsAlreadyGrouped = true;
                 }
                 this.rowsAfterGroup = expandCreator.group(this.allRows, this.gridOptionsWrapper.getExpandedRowsDefault());
