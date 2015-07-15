@@ -40,6 +40,8 @@
         "./layout/borderLayout.ts",
         "./layout/verticalStack.ts",
         "./main.ts",
+        "./renderedCell.ts",
+        "./renderedRow.ts",
         "./rowControllers/inMemoryRowController.ts",
         "./rowControllers/paginationController.ts",
         "./rowControllers/virtualPageRowController.ts",
