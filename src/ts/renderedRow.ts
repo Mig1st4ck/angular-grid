@@ -211,6 +211,7 @@ module awk.grid {
             if (this.node.group) {
                 this.drawNormalRow();
             } else if (!this.node.first) {
+                this.bodyElement.style.display = 'none';
                 return;
             }
         }

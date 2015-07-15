@@ -21,15 +21,21 @@ module awk.grid {
             for (var i = 0; i < rowNodes.length; i++) {
                 node = rowNodes[i];
                 node.group = true;
+                node.level = node.level || 0;
                 node.children = [{
                     first: true,
-                    parent: node
+                    parent: node,
+                    data: node.data,
+                    level: node.level + 1
                 }];
                 node.rows = call(node);
                 if (node.rows) {
                     for (var y = 1; y < node.rows; y++) {
                         node.children.push({
-                            first: false
+                            first: false,
+                            parent: node,
+                            data: node.data,
+                            level: node.level + 1
                         });
                     };
                 }
