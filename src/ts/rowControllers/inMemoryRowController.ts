@@ -11,7 +11,7 @@ module awk.grid {
 
     export class InMemoryRowController {
 
-        private gridOptionsWrapper: any;
+        private gridOptionsWrapper: awk.grid.GridOptionsWrapper;
         private columnController: ColumnController;
         private angularGrid: any;
         private filterManager: any;
@@ -396,7 +396,7 @@ module awk.grid {
 
         // private
         doExpanding() {
-            if (this.gridOptionsWrapper.isDoInternalExpanding()) {
+            if (this.gridOptionsWrapper.getRowExpandRenderer()) {
                 this.gridOptionsWrapper.gridOptions.rowsAlreadyGrouped = true;
                 var nodes: any[] = [];
                 for (var i = 0; i < (this.allRows||[]).length; i++) {

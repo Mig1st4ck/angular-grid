@@ -1,6 +1,6 @@
 /**
  * angular-grid - High performance and feature rich data grid for AngularJS
- * @version v1.12.4
+ * @version v1.12.5
  * @link http://www.angulargrid.com/
  * @license MIT
  */
@@ -373,8 +373,148 @@ var awk;
         grid.Constants = Constants;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
+/// <reference path="../constants.ts" />
+var awk;
+(function (awk) {
+    var grid;
+    (function (grid) {
+        var constants = grid.Constants;
+        var Column = (function () {
+            function Column(colDef, actualWidth) {
+                this.colDef = colDef;
+                this.actualWidth = actualWidth;
+                this.visible = !colDef.hide;
+                // in the future, the colKey might be something other than the index
+                if (colDef.colId) {
+                    this.colId = colDef.colId;
+                }
+                else if (colDef.field) {
+                    this.colId = colDef.field;
+                }
+                else {
+                    this.colId = '' + Column.colIdSequence++;
+                }
+            }
+            Column.prototype.isGreaterThanMax = function (width) {
+                if (this.colDef.maxWidth >= constants.MIN_COL_WIDTH) {
+                    return width > this.colDef.maxWidth;
+                }
+                else {
+                    return false;
+                }
+            };
+            Column.prototype.getMinimumWidth = function () {
+                if (this.colDef.minWidth > constants.MIN_COL_WIDTH) {
+                    return this.colDef.minWidth;
+                }
+                else {
+                    return constants.MIN_COL_WIDTH;
+                }
+            };
+            Column.prototype.setMinimum = function () {
+                this.actualWidth = this.getMinimumWidth();
+            };
+            Column.colIdSequence = 0;
+            return Column;
+        })();
+        grid.Column = Column;
+    })(grid = awk.grid || (awk.grid = {}));
+})(awk || (awk = {}));
+var awk;
+(function (awk) {
+    var grid;
+    (function (grid) {
+        var ColumnGroup = (function () {
+            function ColumnGroup(pinned, name) {
+                this.allColumns = [];
+                this.displayedColumns = [];
+                this.expandable = false;
+                this.expanded = false;
+                this.pinned = pinned;
+                this.name = name;
+            }
+            ColumnGroup.prototype.getMinimumWidth = function () {
+                var result = 0;
+                this.displayedColumns.forEach(function (column) {
+                    result += column.getMinimumWidth();
+                });
+                return result;
+            };
+            ColumnGroup.prototype.addColumn = function (column) {
+                this.allColumns.push(column);
+            };
+            // need to check that this group has at least one col showing when both expanded and contracted.
+            // if not, then we don't allow expanding and contracting on this group
+            ColumnGroup.prototype.calculateExpandable = function () {
+                // want to make sure the group doesn't disappear when it's open
+                var atLeastOneShowingWhenOpen = false;
+                // want to make sure the group doesn't disappear when it's closed
+                var atLeastOneShowingWhenClosed = false;
+                // want to make sure the group has something to show / hide
+                var atLeastOneChangeable = false;
+                for (var i = 0, j = this.allColumns.length; i < j; i++) {
+                    var column = this.allColumns[i];
+                    if (column.colDef.headerGroupShow === 'open') {
+                        atLeastOneShowingWhenOpen = true;
+                        atLeastOneChangeable = true;
+                    }
+                    else if (column.colDef.headerGroupShow === 'closed') {
+                        atLeastOneShowingWhenClosed = true;
+                        atLeastOneChangeable = true;
+                    }
+                    else {
+                        atLeastOneShowingWhenOpen = true;
+                        atLeastOneShowingWhenClosed = true;
+                    }
+                }
+                this.expandable = atLeastOneShowingWhenOpen && atLeastOneShowingWhenClosed && atLeastOneChangeable;
+            };
+            ColumnGroup.prototype.calculateDisplayedColumns = function () {
+                // clear out last time we calculated
+                this.displayedColumns = [];
+                // it not expandable, everything is visible
+                if (!this.expandable) {
+                    this.displayedColumns = this.allColumns;
+                    return;
+                }
+                for (var i = 0, j = this.allColumns.length; i < j; i++) {
+                    var column = this.allColumns[i];
+                    switch (column.colDef.headerGroupShow) {
+                        case 'open':
+                            // when set to open, only show col if group is open
+                            if (this.expanded) {
+                                this.displayedColumns.push(column);
+                            }
+                            break;
+                        case 'closed':
+                            // when set to open, only show col if group is open
+                            if (!this.expanded) {
+                                this.displayedColumns.push(column);
+                            }
+                            break;
+                        default:
+                            // default is always show the column
+                            this.displayedColumns.push(column);
+                            break;
+                    }
+                }
+            };
+            // should replace with utils method 'add all'
+            ColumnGroup.prototype.addToVisibleColumns = function (colsToAdd) {
+                for (var i = 0; i < this.displayedColumns.length; i++) {
+                    var column = this.displayedColumns[i];
+                    colsToAdd.push(column);
+                }
+            };
+            return ColumnGroup;
+        })();
+        grid.ColumnGroup = ColumnGroup;
+    })(grid = awk.grid || (awk.grid = {}));
+})(awk || (awk = {}));
 /// <reference path="utils.ts" />
 /// <reference path="constants.ts" />
+/// <reference path="entities/column.ts" />
+/// <reference path="entities/columnGroup.ts" />
 var awk;
 (function (awk) {
     var grid;
@@ -383,8 +523,8 @@ var awk;
         var constants = grid.Constants;
         var ColumnController = (function () {
             function ColumnController() {
-                this.listeners = [];
-                this.createModel();
+                this.setupComplete = false;
+                this.changedListeners = [];
             }
             ColumnController.prototype.init = function (angularGrid, selectionRendererFactory, gridOptionsWrapper, expressionService, valueService) {
                 this.gridOptionsWrapper = gridOptionsWrapper;
@@ -393,78 +533,147 @@ var awk;
                 this.expressionService = expressionService;
                 this.valueService = valueService;
             };
-            ColumnController.prototype.createModel = function () {
-                var that = this;
-                this.model = {
-                    // used by:
-                    // + inMemoryRowController -> sorting, building quick filter text
-                    // + headerRenderer -> sorting (clearing icon)
-                    getAllColumns: function () {
-                        return that.allColumns;
-                    },
-                    // + rowController -> while inserting rows, and when tabbing through cells (need to change this)
-                    // need a newMethod - get next col index
-                    getDisplayedColumns: function () {
-                        return that.displayedColumns;
-                    },
-                    // + toolPanel
-                    getGroupedColumns: function () {
-                        return that.pivotColumns;
-                    },
-                    // + rowController
-                    getValueColumns: function () {
-                        return that.valueColumns;
-                    },
-                    // used by:
-                    // + angularGrid -> for setting body width
-                    // + rowController -> setting main row widths (when inserting and resizing)
-                    getBodyContainerWidth: function () {
-                        return that.getTotalColWidth(false);
-                    },
-                    // used by:
-                    // + angularGrid -> setting pinned body width
-                    getPinnedContainerWidth: function () {
-                        return that.getTotalColWidth(true);
-                    },
-                    // used by:
-                    // + headerRenderer -> setting pinned body width
-                    getHeaderGroups: function () {
-                        return that.headerGroups;
-                    },
-                    // used by:
-                    // + api.getFilterModel() -> to map colDef to column, key can be colDef or field
-                    getColumn: function (key) {
-                        return that.getColumn(key);
-                    },
-                    // used by:
-                    // + rowRenderer -> for navigation
-                    getVisibleColBefore: function (col) {
-                        var oldIndex = that.visibleColumns.indexOf(col);
-                        if (oldIndex > 0) {
-                            return that.visibleColumns[oldIndex - 1];
-                        }
-                        else {
-                            return null;
-                        }
-                    },
-                    // used by:
-                    // + rowRenderer -> for navigation
-                    getVisibleColAfter: function (col) {
-                        var oldIndex = that.visibleColumns.indexOf(col);
-                        if (oldIndex < (that.visibleColumns.length - 1)) {
-                            return that.visibleColumns[oldIndex + 1];
-                        }
-                        else {
-                            return null;
-                        }
-                    },
-                    getDisplayNameForCol: function (column) {
-                        return that.getDisplayNameForCol(column);
-                    },
-                    isPinning: function () {
-                        return that.visibleColumns && that.visibleColumns.length > 0 && that.visibleColumns[0].pinned;
-                    }
-                };
+            ColumnController.prototype.isSetupComplete = function () {
+                return this.setupComplete;
+            };
+            // used by:
+            // + headerRenderer -> setting pinned body width
+            ColumnController.prototype.getHeaderGroups = function () {
+                return this.columnGroups;
+            };
+            // used by:
+            // + angularGrid -> setting pinned body width
+            ColumnController.prototype.getPinnedContainerWidth = function () {
+                return this.getTotalColWidth(true);
+            };
+            ColumnController.prototype.addPivotColumn = function (column) {
+                if (this.allColumns.indexOf(column) < 0) {
+                    console.warn('not a valid column: ' + column);
+                    return;
+                }
+                if (this.pivotColumns.indexOf(column) >= 0) {
+                    console.warn('column is already a value column');
+                    return;
+                }
+                this.pivotColumns.push(column);
+                // because we could be taking out 'pivot' columns, the displayed
+                // columns may differ, so need to work out all the columns again
+                this.updateModel();
+                this.firePivotChanged();
+                this.fireColumnsChanged();
+            };
+            ColumnController.prototype.removePivotColumn = function (column) {
+                if (this.pivotColumns.indexOf(column) < 0) {
+                    console.warn('column not a pivot');
+                    return;
+                }
+                _.removeFromArray(this.pivotColumns, column);
+                this.updateModel();
+                this.firePivotChanged();
+                this.fireColumnsChanged();
+            };
+            ColumnController.prototype.addValueColumn = function (column) {
+                if (this.allColumns.indexOf(column) < 0) {
+                    console.warn('not a valid column: ' + column);
+                    return;
+                }
+                if (this.valueColumns.indexOf(column) >= 0) {
+                    console.warn('column is already a value column');
+                    return;
+                }
+                if (!column.aggFunc) {
+                    column.aggFunc = constants.SUM;
+                }
+                this.valueColumns.push(column);
+                this.fireValuesChanged();
+                this.fireColumnsChanged();
+            };
+            ColumnController.prototype.removeValueColumn = function (column) {
+                if (this.valueColumns.indexOf(column) < 0) {
+                    console.warn('column not a value');
+                    return;
+                }
+                _.removeFromArray(this.valueColumns, column);
+                this.fireValuesChanged();
+                this.fireColumnsChanged();
+            };
+            ColumnController.prototype.setColumnAggFunction = function (column, aggFunc) {
+                column.aggFunc = aggFunc;
+                this.fireValuesChanged();
+                this.fireColumnsChanged();
+            };
+            ColumnController.prototype.movePivotColumn = function (fromIndex, toIndex) {
+                var column = this.pivotColumns[fromIndex];
+                this.pivotColumns.splice(fromIndex, 1);
+                this.pivotColumns.splice(toIndex, 0, column);
+                this.firePivotChanged();
+                this.fireColumnsChanged();
+            };
+            ColumnController.prototype.moveColumn = function (fromIndex, toIndex) {
+                var column = this.allColumns[fromIndex];
+                this.allColumns.splice(fromIndex, 1);
+                this.allColumns.splice(toIndex, 0, column);
+                this.updateModel();
+                this.fireColumnsChanged();
+                if (typeof this.gridOptionsWrapper.getColumnOrderChanged() === 'function') {
+                    this.gridOptionsWrapper.getColumnOrderChanged()(this.allColumns);
+                }
+            };
+            // used by:
+            // + angularGrid -> for setting body width
+            // + rowController -> setting main row widths (when inserting and resizing)
+            ColumnController.prototype.getBodyContainerWidth = function () {
+                return this.getTotalColWidth(false);
+            };
+            // + rowController
+            ColumnController.prototype.getValueColumns = function () {
+                return this.valueColumns;
+            };
+            // + toolPanel
+            ColumnController.prototype.getGroupedColumns = function () {
+                return this.pivotColumns;
+            };
+            // + rowController -> while inserting rows, and when tabbing through cells (need to change this)
+            // need a newMethod - get next col index
+            ColumnController.prototype.getDisplayedColumns = function () {
+                return this.displayedColumns;
+            };
+            // used by:
+            // + inMemoryRowController -> sorting, building quick filter text
+            // + headerRenderer -> sorting (clearing icon)
+            ColumnController.prototype.getAllColumns = function () {
+                return this.allColumns;
+            };
+            ColumnController.prototype.setColumnVisible = function (column, visible) {
+                column.visible = visible;
+                this.updateModel();
+                this.fireColumnsChanged();
+                if (typeof this.gridOptionsWrapper.getColumnVisibilityChanged() === 'function') {
+                    this.gridOptionsWrapper.getColumnVisibilityChanged()(this.allColumns);
+                }
+            };
+            ColumnController.prototype.getVisibleColBefore = function (col) {
+                var oldIndex = this.visibleColumns.indexOf(col);
+                if (oldIndex > 0) {
+                    return this.visibleColumns[oldIndex - 1];
+                }
+                else {
+                    return null;
+                }
+            };
+            // used by:
+            // + rowRenderer -> for navigation
+            ColumnController.prototype.getVisibleColAfter = function (col) {
+                var oldIndex = this.visibleColumns.indexOf(col);
+                if (oldIndex < (this.visibleColumns.length - 1)) {
+                    return this.visibleColumns[oldIndex + 1];
+                }
+                else {
+                    return null;
+                }
+            };
+            ColumnController.prototype.isPinning = function () {
+                return this.visibleColumns && this.visibleColumns.length > 0 && this.visibleColumns[0].pinned;
             };
             ColumnController.prototype.getState = function () {
                 if (!this.allColumns || this.allColumns.length < 0) {
@@ -527,6 +736,8 @@ var awk;
                     return colA.pivotIndex - colB.pivotIndex;
                 });
                 this.updateModel();
+                this.firePivotChanged();
+                this.fireValuesChanged();
                 this.fireColumnsChanged();
             };
             ColumnController.prototype.getColumn = function (key) {
@@ -568,15 +779,28 @@ var awk;
                 }
             };
             ColumnController.prototype.addListener = function (listener) {
-                this.listeners.push(listener);
+                this.changedListeners.push(listener);
             };
-            ColumnController.prototype.fireColumnsChanged = function () {
-                for (var i = 0; i < this.listeners.length; i++) {
-                    this.listeners[i].columnsChanged(this.allColumns, this.pivotColumns, this.valueColumns);
+            ColumnController.prototype.firePivotChanged = function () {
+                for (var i = 0; i < this.changedListeners.length; i++) {
+                    if (this.changedListeners[i].pivotChanged) {
+                        this.changedListeners[i].pivotChanged();
+                    }
                 }
             };
-            ColumnController.prototype.getModel = function () {
-                return this.model;
+            ColumnController.prototype.fireColumnsChanged = function () {
+                for (var i = 0; i < this.changedListeners.length; i++) {
+                    if (this.changedListeners[i].columnsChanged) {
+                        this.changedListeners[i].columnsChanged(this.allColumns, this.pivotColumns, this.valueColumns);
+                    }
+                }
+            };
+            ColumnController.prototype.fireValuesChanged = function () {
+                for (var i = 0; i < this.changedListeners.length; i++) {
+                    if (this.changedListeners[i].valuesChanged) {
+                        this.changedListeners[i].valuesChanged();
+                    }
+                }
             };
             // called by angularGrid
             ColumnController.prototype.setColumns = function (columnDefs) {
@@ -585,7 +809,10 @@ var awk;
                 this.createPivotColumns();
                 this.createValueColumns();
                 this.updateModel();
+                this.firePivotChanged();
+                this.fireValuesChanged();
                 this.fireColumnsChanged();
+                this.setupComplete = true;
             };
             ColumnController.prototype.checkForDeprecatedItems = function (columnDefs) {
                 if (columnDefs) {
@@ -607,12 +834,7 @@ var awk;
                 group.expanded = !group.expanded;
                 this.updateGroups();
                 this.updateDisplayedColumns();
-                this.angularGrid.refreshHeaderAndBody();
-            };
-            // called by toolPanel - when change in columns happens
-            ColumnController.prototype.onColumnStateChanged = function () {
-                this.updateModel();
-                this.angularGrid.refreshHeaderAndBody();
+                this.fireColumnsChanged();
             };
             // called from API
             ColumnController.prototype.hideColumns = function (colIds, hide) {
@@ -623,8 +845,8 @@ var awk;
                         this.allColumns[i].visible = !hide;
                     }
                 }
-                this.onColumnStateChanged();
-                this.fireColumnsChanged(); // to tell toolbar
+                this.updateModel();
+                this.fireColumnsChanged();
             };
             ColumnController.prototype.updateModel = function () {
                 this.updateVisibleColumns();
@@ -641,8 +863,8 @@ var awk;
                 else {
                     // if grouping, then only show col as per group rules
                     this.displayedColumns = [];
-                    for (var i = 0; i < this.headerGroups.length; i++) {
-                        var group = this.headerGroups[i];
+                    for (var i = 0; i < this.columnGroups.length; i++) {
+                        var group = this.columnGroups[i];
                         group.addToVisibleColumns(this.displayedColumns);
                     }
                 }
@@ -671,6 +893,9 @@ var awk;
                     }
                     else {
                         var scale = availablePixels / getTotalWidth(colsToSpread);
+                        // we set the pixels for the last col based on what's left, as otherwise
+                        // we could be a pixel or two short or extra because of rounding errors.
+                        var pixelsForLastCol = availablePixels;
                         for (var i = colsToSpread.length - 1; i >= 0; i--) {
                             var column = colsToSpread[i];
                             var newWidth = Math.round(column.actualWidth * scale);
@@ -685,13 +910,20 @@ var awk;
                                 finishedResizing = false;
                             }
                             else {
-                                column.actualWidth = newWidth;
+                                var onLastCol = i === 0;
+                                if (onLastCol) {
+                                    column.actualWidth = pixelsForLastCol;
+                                }
+                                else {
+                                    pixelsForLastCol -= newWidth;
+                                    column.actualWidth = newWidth;
+                                }
                             }
                         }
                     }
                 }
                 // widths set, refresh the gui
-                this.angularGrid.refreshHeaderAndBody();
+                this.fireColumnsChanged();
                 function moveToNotSpread(column) {
                     _.removeFromArray(colsToSpread, column);
                     colsToNotSpread.push(column);
@@ -707,12 +939,12 @@ var awk;
             ColumnController.prototype.buildGroups = function () {
                 // if not grouping by headers, do nothing
                 if (!this.gridOptionsWrapper.isGroupHeaders()) {
-                    this.headerGroups = null;
+                    this.columnGroups = null;
                     return;
                 }
                 // split the columns into groups
                 var currentGroup = null;
-                this.headerGroups = [];
+                this.columnGroups = [];
                 var that = this;
                 var lastColWasPinned = true;
                 this.visibleColumns.forEach(function (column) {
@@ -731,8 +963,8 @@ var awk;
                     // create new group, if it's needed
                     if (newGroupNeeded) {
                         var pinned = column.pinned;
-                        currentGroup = new HeaderGroup(pinned, column.colDef.headerGroup);
-                        that.headerGroups.push(currentGroup);
+                        currentGroup = new grid.ColumnGroup(pinned, column.colDef.headerGroup);
+                        that.columnGroups.push(currentGroup);
                     }
                     currentGroup.addColumn(column);
                 });
@@ -742,8 +974,8 @@ var awk;
                 if (!this.gridOptionsWrapper.isGroupHeaders()) {
                     return;
                 }
-                for (var i = 0; i < this.headerGroups.length; i++) {
-                    var group = this.headerGroups[i];
+                for (var i = 0; i < this.columnGroups.length; i++) {
+                    var group = this.columnGroups[i];
                     group.calculateExpandable();
                     group.calculateDisplayedColumns();
                 }
@@ -751,7 +983,7 @@ var awk;
             ColumnController.prototype.updateVisibleColumns = function () {
                 this.visibleColumns = [];
                 // see if we need to insert the default grouping column
-                var needAGroupColumn = this.pivotColumns.length > 0 && !this.gridOptionsWrapper.isGroupSuppressAutoColumn() && !this.gridOptionsWrapper.isGroupUseEntireRow();
+                var needAGroupColumn = this.pivotColumns.length > 0 && !this.gridOptionsWrapper.isGroupSuppressAutoColumn() && !this.gridOptionsWrapper.isGroupUseEntireRow() && !this.gridOptionsWrapper.isGroupSuppressRow();
                 var localeTextFunc = this.gridOptionsWrapper.getLocaleTextFunc();
                 if (needAGroupColumn) {
                     // if one provided by user, use it, otherwise create one
@@ -765,7 +997,7 @@ var awk;
                         };
                     }
                     // no group column provided, need to create one here
-                    var groupColumn = new Column(groupColDef, this.gridOptionsWrapper.getColWidth());
+                    var groupColumn = new grid.Column(groupColDef, this.gridOptionsWrapper.getColWidth());
                     this.visibleColumns.push(groupColumn);
                 }
                 for (var i = 0; i < this.allColumns.length; i++) {
@@ -784,19 +1016,14 @@ var awk;
                     this.visibleColumns[i].pinned = pinned;
                 }
             };
-            ColumnController.prototype.createColumns = function (columnDefs) {
+            ColumnController.prototype.createColumns = function (colDefs) {
                 this.allColumns = [];
-                var that = this;
-                if (columnDefs) {
-                    for (var i = 0; i < columnDefs.length; i++) {
-                        var colDef = columnDefs[i];
-                        // this is messy - we swap in another col def if it's checkbox selection - not happy :(
-                        if (colDef === 'checkboxSelection') {
-                            colDef = that.selectionRendererFactory.createCheckboxColDef();
-                        }
-                        var width = that.calculateColInitialWidth(colDef);
-                        var column = new Column(colDef, width);
-                        that.allColumns.push(column);
+                if (colDefs) {
+                    for (var i = 0; i < colDefs.length; i++) {
+                        var colDef = colDefs[i];
+                        var width = this.calculateColInitialWidth(colDef);
+                        var column = new grid.Column(colDef, width);
+                        this.allColumns.push(column);
                     }
                 }
             };
@@ -832,7 +1059,7 @@ var awk;
                     hide: false
                 };
                 var width = this.gridOptionsWrapper.getColWidth();
-                var column = new Column(colDef, width);
+                var column = new grid.Column(colDef, width);
                 return column;
             };
             ColumnController.prototype.calculateColInitialWidth = function (colDef) {
@@ -864,130 +1091,65 @@ var awk;
             return ColumnController;
         })();
         grid.ColumnController = ColumnController;
-        var HeaderGroup = (function () {
-            function HeaderGroup(pinned, name) {
-                this.allColumns = [];
-                this.displayedColumns = [];
-                this.expandable = false;
-                this.expanded = false;
-                this.pinned = pinned;
-                this.name = name;
+    })(grid = awk.grid || (awk.grid = {}));
+})(awk || (awk = {}));
+var awk;
+(function (awk) {
+    var grid;
+    (function (grid) {
+        var ExpandCreator = (function () {
+            function ExpandCreator() {
             }
-            HeaderGroup.prototype.getMinimumWidth = function () {
-                var result = 0;
-                this.displayedColumns.forEach(function (column) {
-                    result += column.getMinimumWidth();
-                });
-                return result;
-            };
-            HeaderGroup.prototype.addColumn = function (column) {
-                this.allColumns.push(column);
-            };
-            // need to check that this group has at least one col showing when both expanded and contracted.
-            // if not, then we don't allow expanding and contracting on this group
-            HeaderGroup.prototype.calculateExpandable = function () {
-                // want to make sure the group doesn't disappear when it's open
-                var atLeastOneShowingWhenOpen = false;
-                // want to make sure the group doesn't disappear when it's closed
-                var atLeastOneShowingWhenClosed = false;
-                // want to make sure the group has something to show / hide
-                var atLeastOneChangeable = false;
-                for (var i = 0, j = this.allColumns.length; i < j; i++) {
-                    var column = this.allColumns[i];
-                    if (column.colDef.headerGroupShow === 'open') {
-                        atLeastOneShowingWhenOpen = true;
-                        atLeastOneChangeable = true;
-                    }
-                    else if (column.colDef.headerGroupShow === 'closed') {
-                        atLeastOneShowingWhenClosed = true;
-                        atLeastOneChangeable = true;
-                    }
-                    else {
-                        atLeastOneShowingWhenOpen = true;
-                        atLeastOneShowingWhenClosed = true;
-                    }
+            ExpandCreator.getInstance = function () {
+                if (!this.theInstance) {
+                    this.theInstance = new ExpandCreator();
                 }
-                this.expandable = atLeastOneShowingWhenOpen && atLeastOneShowingWhenClosed && atLeastOneChangeable;
+                return this.theInstance;
             };
-            HeaderGroup.prototype.calculateDisplayedColumns = function () {
-                // clear out last time we calculated
-                this.displayedColumns = [];
-                // it not expandable, everything is visible
-                if (!this.expandable) {
-                    this.displayedColumns = this.allColumns;
-                    return;
+            ExpandCreator.prototype.group = function (rowNodes, defaultExapanded, expandByDefault) {
+                var node;
+                var call = function (n) {
+                    return n.rows || defaultExapanded;
+                };
+                if (typeof defaultExapanded === 'function') {
+                    call = defaultExapanded;
                 }
-                for (var i = 0, j = this.allColumns.length; i < j; i++) {
-                    var column = this.allColumns[i];
-                    switch (column.colDef.headerGroupShow) {
-                        case 'open':
-                            // when set to open, only show col if group is open
-                            if (this.expanded) {
-                                this.displayedColumns.push(column);
-                            }
-                            break;
-                        case 'closed':
-                            // when set to open, only show col if group is open
-                            if (!this.expanded) {
-                                this.displayedColumns.push(column);
-                            }
-                            break;
-                        default:
-                            // default is always show the column
-                            this.displayedColumns.push(column);
-                            break;
+                for (var i = 0; i < rowNodes.length; i++) {
+                    node = rowNodes[i];
+                    node.group = true;
+                    node.level = node.level || 0;
+                    node.children = [{
+                        first: true,
+                        parent: node,
+                        data: node.data,
+                        level: node.level + 1
+                    }];
+                    node.rows = call(node);
+                    if (node.rows) {
+                        for (var y = 1; y < node.rows; y++) {
+                            node.children.push({
+                                first: false,
+                                parent: node,
+                                data: node.data,
+                                level: node.level + 1
+                            });
+                        }
+                        ;
                     }
                 }
+                return rowNodes;
             };
-            // should replace with utils method 'add all'
-            HeaderGroup.prototype.addToVisibleColumns = function (colsToAdd) {
-                for (var i = 0; i < this.displayedColumns.length; i++) {
-                    var column = this.displayedColumns[i];
-                    colsToAdd.push(column);
+            ExpandCreator.prototype.isExpanded = function (expandByDefault, level) {
+                if (typeof expandByDefault === 'number') {
+                    return level < expandByDefault;
+                }
+                else {
+                    return expandByDefault === true || expandByDefault === 'true';
                 }
             };
-            return HeaderGroup;
+            return ExpandCreator;
         })();
-        grid.HeaderGroup = HeaderGroup;
-        var Column = (function () {
-            function Column(colDef, actualWidth) {
-                this.colDef = colDef;
-                this.actualWidth = actualWidth;
-                this.visible = !colDef.hide;
-                // in the future, the colKey might be something other than the index
-                if (colDef.colId) {
-                    this.colId = colDef.colId;
-                }
-                else if (colDef.field) {
-                    this.colId = colDef.field;
-                }
-                else {
-                    this.colId = '' + Column.colIdSequence++;
-                }
-            }
-            Column.prototype.isGreaterThanMax = function (width) {
-                if (this.colDef.maxWidth >= constants.MIN_COL_WIDTH) {
-                    return width > this.colDef.maxWidth;
-                }
-                else {
-                    return false;
-                }
-            };
-            Column.prototype.getMinimumWidth = function () {
-                if (this.colDef.minWidth > constants.MIN_COL_WIDTH) {
-                    return this.colDef.minWidth;
-                }
-                else {
-                    return constants.MIN_COL_WIDTH;
-                }
-            };
-            Column.prototype.setMinimum = function () {
-                this.actualWidth = this.getMinimumWidth();
-            };
-            Column.colIdSequence = 0;
-            return Column;
-        })();
-        grid.Column = Column;
+        grid.ExpandCreator = ExpandCreator;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
 var awk;
@@ -1082,6 +1244,9 @@ var awk;
             GridOptionsWrapper.prototype.isRowsAlreadyGrouped = function () {
                 return isTrue(this.gridOptions.rowsAlreadyGrouped);
             };
+            GridOptionsWrapper.prototype.isRowsAlreadyExpanded = function () {
+                return isTrue(this.gridOptions.rowsAlreadyExpanded);
+            };
             GridOptionsWrapper.prototype.isGroupSelectsChildren = function () {
                 return isTrue(this.gridOptions.groupSelectsChildren);
             };
@@ -1154,6 +1319,9 @@ var awk;
             GridOptionsWrapper.prototype.getGroupColumnDef = function () {
                 return this.gridOptions.groupColumnDef;
             };
+            GridOptionsWrapper.prototype.isGroupSuppressRow = function () {
+                return isTrue(this.gridOptions.groupSuppressRow);
+            };
             GridOptionsWrapper.prototype.isAngularCompileRows = function () {
                 return isTrue(this.gridOptions.angularCompileRows);
             };
@@ -1223,6 +1391,9 @@ var awk;
             GridOptionsWrapper.prototype.getRowBuffer = function () {
                 return this.gridOptions.rowBuffer;
             };
+            GridOptionsWrapper.prototype.getExpandedRowsDefault = function () {
+                return this.gridOptions.expandedRowsDefault || 0;
+            };
             GridOptionsWrapper.prototype.isEnableSorting = function () {
                 return isTrue(this.gridOptions.enableSorting) || isTrue(this.gridOptions.enableServerSideSorting);
             };
@@ -1246,6 +1417,9 @@ var awk;
             };
             GridOptionsWrapper.prototype.setSelectedNodesById = function (newSelectedNodes) {
                 return this.gridOptions.selectedNodesById = newSelectedNodes;
+            };
+            GridOptionsWrapper.prototype.getRowExpandRenderer = function () {
+                return this.gridOptions.expandRow;
             };
             GridOptionsWrapper.prototype.getIcons = function () {
                 return this.gridOptions.icons;
@@ -1322,6 +1496,7 @@ var awk;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
 /// <reference path="../utils.ts" />
+/// <reference path="textAndNumberFilterParameters.ts" />
 var awk;
 (function (awk) {
     var grid;
@@ -1489,6 +1664,7 @@ var awk;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
 /// <reference path="../utils.ts" />
+/// <reference path="textAndNumberFilterParameters.ts" />
 var awk;
 (function (awk) {
     var grid;
@@ -1847,8 +2023,10 @@ var awk;
         grid.SetFilterModel = SetFilterModel;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
+/** The filter parameters for set filter */
 /// <reference path="../utils.ts" />
 /// <reference path="setFilterModel.ts" />
+/// <reference path="setFilterParameters.ts" />
 var awk;
 (function (awk) {
     var grid;
@@ -2917,7 +3095,7 @@ var awk;
     (function (grid) {
         var _ = grid.Utils;
         var RenderedCell = (function () {
-            function RenderedCell(isFirstColumn, column, $compile, rowRenderer, gridOptionsWrapper, expressionService, selectionRendererFactory, selectionController, templateService, cellRendererMap, node, rowIndex, scope, columnModel, valueService) {
+            function RenderedCell(isFirstColumn, column, $compile, rowRenderer, gridOptionsWrapper, expressionService, selectionRendererFactory, selectionController, templateService, cellRendererMap, node, rowIndex, scope, columnController, valueService) {
                 this.isFirstColumn = false;
                 this.isFirstColumn = isFirstColumn;
                 this.column = column;
@@ -2929,7 +3107,7 @@ var awk;
                 this.cellRendererMap = cellRendererMap;
                 this.$compile = $compile;
                 this.templateService = templateService;
-                this.columnModel = columnModel;
+                this.columnController = columnController;
                 this.valueService = valueService;
                 this.checkboxSelection = this.column.colDef.checkboxSelection;
                 this.node = node;
@@ -3457,14 +3635,14 @@ var awk;
     (function (grid) {
         var _ = grid.Utils;
         var RenderedRow = (function () {
-            function RenderedRow(gridOptionsWrapper, valueService, parentScope, angularGrid, columnModel, expressionService, cellRendererMap, selectionRendererFactory, $compile, templateService, selectionController, rowRenderer, eBodyContainer, ePinnedContainer, node, rowIndex) {
+            function RenderedRow(gridOptionsWrapper, valueService, parentScope, angularGrid, columnController, expressionService, cellRendererMap, selectionRendererFactory, $compile, templateService, selectionController, rowRenderer, eBodyContainer, ePinnedContainer, node, rowIndex) {
                 this.renderedCells = {};
                 this.gridOptionsWrapper = gridOptionsWrapper;
                 this.valueService = valueService;
                 this.parentScope = parentScope;
                 this.angularGrid = angularGrid;
                 this.expressionService = expressionService;
-                this.columnModel = columnModel;
+                this.columnController = columnController;
                 this.cellRendererMap = cellRendererMap;
                 this.selectionRendererFactory = selectionRendererFactory;
                 this.$compile = $compile;
@@ -3473,9 +3651,10 @@ var awk;
                 this.rowRenderer = rowRenderer;
                 this.eBodyContainer = eBodyContainer;
                 this.ePinnedContainer = ePinnedContainer;
-                this.pinning = columnModel.isPinning();
+                this.pinning = columnController.isPinning();
                 var groupHeaderTakesEntireRow = this.gridOptionsWrapper.isGroupUseEntireRow();
                 var rowIsHeaderThatSpans = node.group && groupHeaderTakesEntireRow;
+                var rowExpandRenderer = this.gridOptionsWrapper.getRowExpandRenderer();
                 this.vBodyRow = this.createRowContainer();
                 if (this.pinning) {
                     this.vPinnedRow = this.createRowContainer();
@@ -3483,7 +3662,7 @@ var awk;
                 this.rowIndex = rowIndex;
                 this.node = node;
                 this.scope = this.createChildScopeOrNull(node.data);
-                if (!rowIsHeaderThatSpans) {
+                if (!rowIsHeaderThatSpans && !rowExpandRenderer) {
                     this.drawNormalRow();
                 }
                 this.addDynamicStyles();
@@ -3506,6 +3685,9 @@ var awk;
                 // if group item, insert the first row
                 if (rowIsHeaderThatSpans) {
                     this.createGroupRow();
+                }
+                if (rowExpandRenderer) {
+                    this.createExpandedRow();
                 }
                 this.bindVirtualElement(this.vBodyRow);
                 if (this.pinning) {
@@ -3566,11 +3748,11 @@ var awk;
                 return this.node.group === true;
             };
             RenderedRow.prototype.drawNormalRow = function () {
-                var columns = this.columnModel.getDisplayedColumns();
+                var columns = this.columnController.getDisplayedColumns();
                 for (var i = 0; i < columns.length; i++) {
                     var column = columns[i];
                     var firstCol = i === 0;
-                    var renderedCell = new grid.RenderedCell(firstCol, column, this.$compile, this.rowRenderer, this.gridOptionsWrapper, this.expressionService, this.selectionRendererFactory, this.selectionController, this.templateService, this.cellRendererMap, this.node, this.rowIndex, this.scope, this.columnModel, this.valueService);
+                    var renderedCell = new grid.RenderedCell(firstCol, column, this.$compile, this.rowRenderer, this.gridOptionsWrapper, this.expressionService, this.selectionRendererFactory, this.selectionController, this.templateService, this.cellRendererMap, this.node, this.rowIndex, this.scope, this.columnController, this.valueService);
                     var vGridCell = renderedCell.getVGridCell();
                     if (column.pinned) {
                         this.vPinnedRow.appendChild(vGridCell);
@@ -3626,6 +3808,26 @@ var awk;
                     _.addCssClass(eRow, 'ag-group-cell-entire-row');
                 }
                 return eRow;
+            };
+            RenderedRow.prototype.createExpandedRow = function () {
+                if (this.node.first) {
+                    var params = {
+                        node: this.node.parent,
+                        data: this.node.parent.data,
+                        rowIndex: this.rowIndex,
+                        api: this.gridOptionsWrapper.getApi()
+                    };
+                    var eGroupRow = this.gridOptionsWrapper.gridOptions.expandRow(params);
+                    this.vBodyRow.style.height = (this.gridOptionsWrapper.getRowHeight() * this.node.parent.rows) + 'px';
+                    this.vBodyRow.appendChild(eGroupRow);
+                }
+                if (this.node.group) {
+                    this.drawNormalRow();
+                }
+                else if (!this.node.first) {
+                    this.vBodyRow.style.display = 'none';
+                    return;
+                }
             };
             RenderedRow.prototype.setMainRowWidth = function (width) {
                 this.vBodyRow.addStyles({ width: width + "px" });
@@ -4778,9 +4980,9 @@ var awk;
         grid.SelectionController = SelectionController;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
-/// <reference path="utils.ts" />
-/// <reference path="constants.ts" />
-/// <reference path="svgFactory.ts" />
+/// <reference path="../utils.ts" />
+/// <reference path="../constants.ts" />
+/// <reference path="../svgFactory.ts" />
 var awk;
 (function (awk) {
     var grid;
@@ -4791,9 +4993,8 @@ var awk;
         var HeaderRenderer = (function () {
             function HeaderRenderer() {
             }
-            HeaderRenderer.prototype.init = function (gridOptionsWrapper, columnController, columnModel, gridPanel, angularGrid, filterManager, $scope, $compile) {
+            HeaderRenderer.prototype.init = function (gridOptionsWrapper, columnController, gridPanel, angularGrid, filterManager, $scope, $compile) {
                 this.gridOptionsWrapper = gridOptionsWrapper;
-                this.columnModel = columnModel;
                 this.columnController = columnController;
                 this.angularGrid = angularGrid;
                 this.filterManager = filterManager;
@@ -4804,7 +5005,6 @@ var awk;
             HeaderRenderer.prototype.findAllElements = function (gridPanel) {
                 this.ePinnedHeader = gridPanel.getPinnedHeader();
                 this.eHeaderContainer = gridPanel.getHeaderContainer();
-                this.eHeader = gridPanel.getHeader();
                 this.eRoot = gridPanel.getRoot();
             };
             HeaderRenderer.prototype.refreshHeader = function () {
@@ -4824,7 +5024,7 @@ var awk;
                 }
             };
             HeaderRenderer.prototype.insertHeadersWithGrouping = function () {
-                var groups = this.columnModel.getHeaderGroups();
+                var groups = this.columnController.getHeaderGroups();
                 var that = this;
                 groups.forEach(function (group) {
                     var eHeaderCell = that.createGroupedHeaderCell(group);
@@ -4853,7 +5053,7 @@ var awk;
                     eHeaderGroupCell.appendChild(eHeaderCellResize);
                     group.eHeaderCellResize = eHeaderCellResize;
                     var dragCallback = this.groupDragCallbackFactory(group);
-                    this.addDragHandler(eHeaderCellResize, dragCallback, group);
+                    this.addDragHandler(eHeaderCellResize, dragCallback, null, group);
                 }
                 // no renderer, default text render
                 var groupName = group.name;
@@ -4898,7 +5098,7 @@ var awk;
                     that.columnController.headerGroupOpened(group);
                 };
             };
-            HeaderRenderer.prototype.addDragHandler = function (eDraggableElement, dragCallback, column) {
+            HeaderRenderer.prototype.addDragHandler = function (eDraggableElement, dragCallback, column, headerGroup) {
                 var that = this;
                 eDraggableElement.addEventListener('mousedown', function (downEvent) {
                     dragCallback.onDragStart();
@@ -4911,10 +5111,10 @@ var awk;
                         dragCallback.onDragging(change);
                     };
                     listenersToRemove.mouseup = function () {
-                        that.stopDragging(listenersToRemove, column);
+                        that.stopDragging(listenersToRemove, column, headerGroup);
                     };
                     listenersToRemove.mouseleave = function () {
-                        that.stopDragging(listenersToRemove, column);
+                        that.stopDragging(listenersToRemove, column, headerGroup);
                     };
                     that.eRoot.addEventListener('mousemove', listenersToRemove.mousemove);
                     that.eRoot.addEventListener('mouseup', listenersToRemove.mouseup);
@@ -4933,7 +5133,7 @@ var awk;
                 var ePinnedHeader = this.ePinnedHeader;
                 var eHeaderContainer = this.eHeaderContainer;
                 var that = this;
-                this.columnModel.getDisplayedColumns().forEach(function (column) {
+                this.columnController.getDisplayedColumns().forEach(function (column) {
                     // only include the first x cols
                     var headerCell = that.createHeaderCell(column, false);
                     if (column.pinned) {
@@ -4954,7 +5154,7 @@ var awk;
                 if (this.gridOptionsWrapper.isAngularCompileHeaders()) {
                     newChildScope = this.$scope.$new();
                     newChildScope.colDef = colDef;
-                    newChildScope.colIndex = colDef.index;
+                    newChildScope.colIndex = column.index;
                     newChildScope.colDefWrapper = column;
                     this.childScopes.push(newChildScope);
                 }
@@ -4976,7 +5176,7 @@ var awk;
                     headerCellResize.className = "ag-header-cell-resize";
                     eHeaderCell.appendChild(headerCellResize);
                     var dragCallback = this.headerDragCallbackFactory(eHeaderCell, column, headerGroup);
-                    this.addDragHandler(headerCellResize, dragCallback, column);
+                    this.addDragHandler(headerCellResize, dragCallback, column, null);
                 }
                 // filter button
                 var showMenu = this.gridOptionsWrapper.isEnableFilter() && !colDef.suppressMenu;
@@ -5032,7 +5232,7 @@ var awk;
                 else if (this.gridOptionsWrapper.getHeaderCellRenderer()) {
                     headerCellRenderer = this.gridOptionsWrapper.getHeaderCellRenderer();
                 }
-                var headerNameValue = this.columnModel.getDisplayNameForCol(column);
+                var headerNameValue = this.columnController.getDisplayNameForCol(column);
                 if (headerCellRenderer) {
                     // renderer provided, use it
                     var cellRendererParams = {
@@ -5138,7 +5338,7 @@ var awk;
                     }
                     var doingMultiSort = !that.gridOptionsWrapper.isSuppressMultiSort() && e.shiftKey;
                     // clear sort on all columns except this one, and update the icons
-                    that.columnModel.getAllColumns().forEach(function (columnToClear) {
+                    that.columnController.getAllColumns().forEach(function (columnToClear) {
                         // Do not clear if either holding shift, or if column in question was clicked
                         if (!(doingMultiSort || columnToClear === column)) {
                             columnToClear.sort = null;
@@ -5148,7 +5348,7 @@ var awk;
                 });
             };
             HeaderRenderer.prototype.updateSortIcons = function () {
-                this.columnModel.getAllColumns().forEach(function (column) {
+                this.columnController.getAllColumns().forEach(function (column) {
                     // update visibility of icons
                     var sortAscending = column.sort === constants.ASC;
                     var sortDescending = column.sort === constants.DESC;
@@ -5227,7 +5427,8 @@ var awk;
                 var selectorForAllColsInCell = ".cell-col-" + column.index;
                 var cellsForThisCol = this.eRoot.querySelectorAll(selectorForAllColsInCell);
                 for (var i = 0; i < cellsForThisCol.length; i++) {
-                    cellsForThisCol[i].style.width = newWidthPx;
+                    var element = cellsForThisCol[i];
+                    element.style.width = newWidthPx;
                 }
                 eHeaderCell.style.width = newWidthPx;
                 column.actualWidth = newWidth;
@@ -5261,17 +5462,25 @@ var awk;
                     }
                 };
             };
-            HeaderRenderer.prototype.stopDragging = function (listenersToRemove, column) {
+            HeaderRenderer.prototype.stopDragging = function (listenersToRemove, column, headerGroup) {
+                var _this = this;
                 this.eRoot.style.cursor = "";
                 var that = this;
                 utils.iterateObject(listenersToRemove, function (key, listener) {
                     that.eRoot.removeEventListener(key, listener);
                 });
-                this.fireColumnResized(column);
+                if (column) {
+                    this.fireColumnResized(column);
+                }
+                else {
+                    headerGroup.displayedColumns.forEach(function (columnInGroup) {
+                        _this.fireColumnResized(columnInGroup);
+                    });
+                }
             };
             HeaderRenderer.prototype.updateFilterIcons = function () {
                 var that = this;
-                this.columnModel.getDisplayedColumns().forEach(function (column) {
+                this.columnController.getDisplayedColumns().forEach(function (column) {
                     // todo: need to change this, so only updates if column is visible
                     if (column.eFilterIcon) {
                         var filterPresent = that.filterManager.isFilterPresentForCol(column.colId);
@@ -5324,7 +5533,7 @@ var awk;
                     for (currentLevel = 0; currentLevel < groupedCols.length; currentLevel++) {
                         var groupColumn = groupedCols[currentLevel];
                         groupKey = this.valueService.getValue(groupColumn, data, node);
-                        if (currentLevel == 0) {
+                        if (currentLevel === 0) {
                             currentGroup = topMostGroup;
                         }
                         // if group doesn't exist yet, create it
@@ -5378,19 +5587,21 @@ var awk;
 /// <reference path="../utils.ts" />
 /// <reference path="../constants.ts" />
 /// <reference path="../groupCreator.ts" />
+/// <reference path="../expandCreator.ts" />
 var awk;
 (function (awk) {
     var grid;
     (function (grid) {
-        var utils = grid.Utils;
+        var _ = grid.Utils;
         var constants = grid.Constants;
+        var expandCreator = grid.ExpandCreator.getInstance();
         var InMemoryRowController = (function () {
             function InMemoryRowController() {
                 this.createModel();
             }
-            InMemoryRowController.prototype.init = function (gridOptionsWrapper, columnModel, angularGrid, filterManager, $scope, groupCreator, valueService) {
+            InMemoryRowController.prototype.init = function (gridOptionsWrapper, columnController, angularGrid, filterManager, $scope, groupCreator, valueService) {
                 this.gridOptionsWrapper = gridOptionsWrapper;
-                this.columnModel = columnModel;
+                this.columnController = columnController;
                 this.angularGrid = angularGrid;
                 this.filterManager = filterManager;
                 this.$scope = $scope;
@@ -5531,7 +5742,7 @@ var awk;
                     this.recursivelyCreateAggData(this.rowsAfterFilter, groupAggFunction, 0);
                     return;
                 }
-                var valueColumns = this.columnModel.getValueColumns();
+                var valueColumns = this.columnController.getValueColumns();
                 var valueKeys = this.gridOptionsWrapper.getGroupAggFields();
                 if ((valueColumns && valueColumns.length > 0) || (valueKeys && valueKeys.length > 0)) {
                     var defaultAggFunction = this.defaultGroupAggFunctionFactory(valueColumns, valueKeys);
@@ -5603,7 +5814,7 @@ var awk;
                 else {
                     //see if there is a col we are sorting by
                     var sortingOptions = [];
-                    this.columnModel.getAllColumns().forEach(function (column) {
+                    this.columnController.getAllColumns().forEach(function (column) {
                         if (column.sort) {
                             var ascending = column.sort === constants.ASC;
                             sortingOptions.push({
@@ -5646,6 +5857,7 @@ var awk;
                         this.recursivelyResetSort(item.children);
                     }
                 }
+                this.updateChildIndexes(rowNodes);
             };
             InMemoryRowController.prototype.sortList = function (nodes, sortOptions) {
                 for (var i = 0, l = nodes.length; i < l; i++) {
@@ -5665,7 +5877,7 @@ var awk;
                     }
                     else {
                         //otherwise do our own comparison
-                        return utils.defaultComparator(valueA, valueB);
+                        return _.defaultComparator(valueA, valueB);
                     }
                 }
                 nodes.sort(function (objA, objB) {
@@ -5679,21 +5891,58 @@ var awk;
                     // All matched, these are identical as far as the sort is concerned:
                     return 0;
                 });
+                this.updateChildIndexes(nodes);
             };
-            // private
-            InMemoryRowController.prototype.doGrouping = function () {
+            InMemoryRowController.prototype.updateChildIndexes = function (nodes) {
+                for (var j = 0; j < nodes.length; j++) {
+                    var node = nodes[j];
+                    node.firstChild = j === 0;
+                    node.lastChild = j === nodes.length - 1;
+                    node.childIndex = j;
+                }
+            };
+            // called by grid when pivot cols change
+            InMemoryRowController.prototype.onPivotChanged = function () {
+                this.doPivoting();
+                this.updateModel(constants.STEP_EVERYTHING);
+            };
+            InMemoryRowController.prototype.doPivoting = function () {
                 var rowsAfterGroup;
-                var groupedCols = this.columnModel.getGroupedColumns();
+                var groupedCols = this.columnController.getGroupedColumns();
                 var rowsAlreadyGrouped = this.gridOptionsWrapper.isRowsAlreadyGrouped();
                 var doingGrouping = !rowsAlreadyGrouped && groupedCols.length > 0;
                 if (doingGrouping) {
-                    var expandByDefault = this.gridOptionsWrapper.getGroupDefaultExpanded();
+                    var expandByDefault = this.gridOptionsWrapper.isGroupSuppressRow() || this.gridOptionsWrapper.getGroupDefaultExpanded();
                     rowsAfterGroup = this.groupCreator.group(this.allRows, groupedCols, expandByDefault);
                 }
                 else {
                     rowsAfterGroup = this.allRows;
                 }
                 this.rowsAfterGroup = rowsAfterGroup;
+            };
+            // private
+            InMemoryRowController.prototype.doExpanding = function () {
+                if (this.gridOptionsWrapper.getRowExpandRenderer()) {
+                    this.gridOptionsWrapper.gridOptions.rowsAlreadyGrouped = true;
+                    var nodes = [];
+                    for (var i = 0; i < (this.allRows || []).length; i++) {
+                        var node = this.allRows[i];
+                        if (typeof node.data === 'object') {
+                            // its alread a grouped
+                            nodes[i] = node;
+                            continue;
+                        }
+                        nodes[i] = {
+                            data: node,
+                            id: node.id,
+                            level: node.level
+                        };
+                        delete node.id;
+                        delete node.level;
+                    }
+                    this.allRows = nodes;
+                    this.rowsAfterGroup = expandCreator.group(this.allRows, this.gridOptionsWrapper.getExpandedRowsDefault());
+                }
             };
             // private
             InMemoryRowController.prototype.doFilter = function () {
@@ -5776,8 +6025,12 @@ var awk;
                 var firstIdToUse = firstId ? firstId : 0;
                 this.recursivelyAddIdToNodes(nodes, firstIdToUse);
                 this.allRows = nodes;
-                // aggregate here, so filters have the agg data ready
-                this.doGrouping();
+                // pivot here, so filters have the agg data ready
+                if (this.columnController.isSetupComplete()) {
+                    this.doPivoting();
+                }
+                // process here the expanded
+                this.doExpanding();
             };
             // add in index - this is used by the selectionController - so quick
             // to look up selected rows
@@ -5838,9 +6091,12 @@ var awk;
                 if (!originalNodes) {
                     return;
                 }
+                var groupSuppressRow = this.gridOptionsWrapper.isGroupSuppressRow();
                 for (var i = 0; i < originalNodes.length; i++) {
                     var node = originalNodes[i];
-                    mappedData.push(node);
+                    if (!groupSuppressRow || (groupSuppressRow && !node.group)) {
+                        mappedData.push(node);
+                    }
                     if (node.group && node.expanded) {
                         this.addToMap(mappedData, node.childrenAfterSort);
                         // put a footer in if user is looking for it
@@ -5890,7 +6146,7 @@ var awk;
             InMemoryRowController.prototype.aggregateRowForQuickFilter = function (node) {
                 var aggregatedText = '';
                 var that = this;
-                this.columnModel.getAllColumns().forEach(function (column) {
+                this.columnController.getAllColumns().forEach(function (column) {
                     var data = node.data;
                     var value = that.valueService.getValue(column, data, node);
                     if (value && value !== '') {
@@ -6964,19 +7220,28 @@ var awk;
         var utils = grid.Utils;
         var dragAndDropService = grid.DragAndDropService.getInstance();
         var template = '<div class="ag-list-selection">' + '<div>' + '<div ag-repeat class="ag-list-item">' + '</div>' + '</div>' + '</div>';
-        var NOT_DROP_TARGET = 0;
-        var DROP_TARGET_ABOVE = 1;
-        var DROP_TARGET_BELOW = -11;
+        var DropTargetLocation;
+        (function (DropTargetLocation) {
+            DropTargetLocation[DropTargetLocation["NOT_DROP_TARGET"] = 0] = "NOT_DROP_TARGET";
+            DropTargetLocation[DropTargetLocation["DROP_TARGET_ABOVE"] = 1] = "DROP_TARGET_ABOVE";
+            DropTargetLocation[DropTargetLocation["DROP_TARGET_BELOW"] = 2] = "DROP_TARGET_BELOW";
+        })(DropTargetLocation || (DropTargetLocation = {}));
+        ;
         var AgList = (function () {
             function AgList() {
+                this.readOnly = false;
                 this.setupComponents();
                 this.uniqueId = 'CheckboxSelection-' + Math.random();
                 this.modelChangedListeners = [];
                 this.itemSelectedListeners = [];
+                this.itemMovedListeners = [];
                 this.beforeDropListeners = [];
                 this.dragSources = [];
                 this.setupAsDropTarget();
             }
+            AgList.prototype.setReadOnly = function (readOnly) {
+                this.readOnly = readOnly;
+            };
             AgList.prototype.setEmptyMessage = function (emptyMessage) {
                 this.emptyMessage = emptyMessage;
                 this.refreshView();
@@ -6999,8 +7264,16 @@ var awk;
             AgList.prototype.addItemSelectedListener = function (listener) {
                 this.itemSelectedListeners.push(listener);
             };
+            AgList.prototype.addItemMovedListener = function (listener) {
+                this.itemMovedListeners.push(listener);
+            };
             AgList.prototype.addBeforeDropListener = function (listener) {
                 this.beforeDropListeners.push(listener);
+            };
+            AgList.prototype.fireItemMoved = function (fromIndex, toIndex) {
+                for (var i = 0; i < this.itemMovedListeners.length; i++) {
+                    this.itemMovedListeners[i](fromIndex, toIndex);
+                }
             };
             AgList.prototype.fireModelChanged = function () {
                 for (var i = 0; i < this.modelChangedListeners.length; i++) {
@@ -7092,7 +7365,9 @@ var awk;
             AgList.prototype.externalDrop = function (dragEvent) {
                 var newListItem = dragEvent.data;
                 this.fireBeforeDrop(newListItem);
-                this.addItemToList(newListItem);
+                if (!this.readOnly) {
+                    this.addItemToList(newListItem);
+                }
                 this.eGui.style.backgroundColor = '';
             };
             AgList.prototype.externalNoDrop = function () {
@@ -7129,10 +7404,10 @@ var awk;
                 var result = dragItem.data !== targetColumn && dragItem.containerId === this.uniqueId;
                 if (result) {
                     if (this.dragAfterThisItem(targetColumn, dragItem.data)) {
-                        this.setDropCssClasses(eListItem, DROP_TARGET_ABOVE);
+                        this.setDropCssClasses(eListItem, 1 /* DROP_TARGET_ABOVE */);
                     }
                     else {
-                        this.setDropCssClasses(eListItem, DROP_TARGET_BELOW);
+                        this.setDropCssClasses(eListItem, 2 /* DROP_TARGET_BELOW */);
                     }
                 }
                 return result;
@@ -7140,21 +7415,26 @@ var awk;
             AgList.prototype.internalDrop = function (targetColumn, draggedColumn) {
                 var oldIndex = this.model.indexOf(draggedColumn);
                 var newIndex = this.model.indexOf(targetColumn);
-                this.model.splice(oldIndex, 1);
-                this.model.splice(newIndex, 0, draggedColumn);
-                this.refreshView();
-                this.fireModelChanged();
+                if (this.readOnly) {
+                    this.fireItemMoved(oldIndex, newIndex);
+                }
+                else {
+                    this.model.splice(oldIndex, 1);
+                    this.model.splice(newIndex, 0, draggedColumn);
+                    this.refreshView();
+                    this.fireModelChanged();
+                }
             };
             AgList.prototype.internalNoDrop = function (eListItem) {
-                this.setDropCssClasses(eListItem, NOT_DROP_TARGET);
+                this.setDropCssClasses(eListItem, 0 /* NOT_DROP_TARGET */);
             };
             AgList.prototype.dragAfterThisItem = function (targetColumn, draggedColumn) {
                 return this.model.indexOf(targetColumn) < this.model.indexOf(draggedColumn);
             };
             AgList.prototype.setDropCssClasses = function (eListItem, state) {
-                utils.addOrRemoveCssClass(eListItem, 'ag-not-drop-target', state === NOT_DROP_TARGET);
-                utils.addOrRemoveCssClass(eListItem, 'ag-drop-target-above', state === DROP_TARGET_ABOVE);
-                utils.addOrRemoveCssClass(eListItem, 'ag-drop-target-below', state === DROP_TARGET_BELOW);
+                utils.addOrRemoveCssClass(eListItem, 'ag-not-drop-target', state === 0 /* NOT_DROP_TARGET */);
+                utils.addOrRemoveCssClass(eListItem, 'ag-drop-target-above', state === 1 /* DROP_TARGET_ABOVE */);
+                utils.addOrRemoveCssClass(eListItem, 'ag-drop-target-below', state === 2 /* DROP_TARGET_BELOW */);
             };
             AgList.prototype.getGui = function () {
                 return this.eGui;
@@ -7213,12 +7493,7 @@ var awk;
                 eVisibleIcons.addEventListener('click', showEventListener);
                 var that = this;
                 function showEventListener() {
-                    column.visible = !column.visible;
-                    that.cColumnList.refreshView();
-                    that.columnController.onColumnStateChanged();
-                    if (typeof that.gridOptionsWrapper.getColumnVisibilityChanged() === 'function') {
-                        that.gridOptionsWrapper.getColumnVisibilityChanged()(column);
-                    }
+                    that.columnController.setColumnVisible(column, !column.visible);
                 }
                 return eResult;
             };
@@ -7226,13 +7501,8 @@ var awk;
                 this.cColumnList = new grid.AgList();
                 this.cColumnList.setCellRenderer(this.columnCellRenderer.bind(this));
                 this.cColumnList.addStyles({ height: '100%', overflow: 'auto' });
-                var that = this;
-                this.cColumnList.addModelChangedListener(function (columns) {
-                    that.columnController.onColumnStateChanged();
-                    if (typeof that.gridOptionsWrapper.getColumnOrderChanged() === 'function') {
-                        that.gridOptionsWrapper.getColumnOrderChanged()(columns);
-                    }
-                });
+                this.cColumnList.addItemMovedListener(this.onItemMoved.bind(this));
+                this.cColumnList.setReadOnly(true);
                 var localeTextFunc = this.gridOptionsWrapper.getLocaleTextFunc();
                 var columnsLocalText = localeTextFunc('columns', 'Columns');
                 var eNorthPanel = document.createElement('div');
@@ -7242,10 +7512,8 @@ var awk;
                     north: eNorthPanel
                 });
             };
-            // not sure if this is called anywhere
-            ColumnSelectionPanel.prototype.setSelected = function (column, selected) {
-                column.visible = selected;
-                this.columnController.onColumnStateChanged();
+            ColumnSelectionPanel.prototype.onItemMoved = function (fromIndex, toIndex) {
+                this.columnController.moveColumn(fromIndex, toIndex);
             };
             ColumnSelectionPanel.prototype.getGui = function () {
                 return this.eRootPanel.getGui();
@@ -7264,9 +7532,8 @@ var awk;
 (function (awk) {
     var grid;
     (function (grid) {
-        var utils = grid.Utils;
+        var _ = grid.Utils;
         var svgFactory = grid.SvgFactory.getInstance();
-        var constants = grid.Constants;
         var GroupSelectionPanel = (function () {
             function GroupSelectionPanel(columnController, inMemoryRowController, gridOptionsWrapper) {
                 this.gridOptionsWrapper = gridOptionsWrapper;
@@ -7288,15 +7555,12 @@ var awk;
                 var column = params.value;
                 var colDisplayName = this.columnController.getDisplayNameForCol(column);
                 var eResult = document.createElement('span');
-                var eRemove = utils.createIcon('columnRemoveFromGroup', this.gridOptionsWrapper, column, svgFactory.createArrowUpSvg);
-                utils.addCssClass(eRemove, 'ag-visible-icons');
+                var eRemove = _.createIcon('columnRemoveFromGroup', this.gridOptionsWrapper, column, svgFactory.createArrowUpSvg);
+                _.addCssClass(eRemove, 'ag-visible-icons');
                 eResult.appendChild(eRemove);
                 var that = this;
                 eRemove.addEventListener('click', function () {
-                    var model = that.cColumnList.getModel();
-                    model.splice(model.indexOf(column), 1);
-                    that.cColumnList.setModel(model);
-                    that.onGroupingChanged();
+                    that.columnController.removePivotColumn(column);
                 });
                 var eValue = document.createElement('span');
                 eValue.innerHTML = colDisplayName;
@@ -7309,9 +7573,11 @@ var awk;
                 var pivotedColumnsEmptyMessage = localeTextFunc('pivotedColumnsEmptyMessage', 'Drag columns from above to pivot');
                 this.cColumnList = new grid.AgList();
                 this.cColumnList.setCellRenderer(this.columnCellRenderer.bind(this));
-                this.cColumnList.addModelChangedListener(this.onGroupingChanged.bind(this));
+                this.cColumnList.addBeforeDropListener(this.onBeforeDrop.bind(this));
+                this.cColumnList.addItemMovedListener(this.onItemMoved.bind(this));
                 this.cColumnList.setEmptyMessage(pivotedColumnsEmptyMessage);
                 this.cColumnList.addStyles({ height: '100%', overflow: 'auto' });
+                this.cColumnList.setReadOnly(true);
                 var eNorthPanel = document.createElement('div');
                 eNorthPanel.style.paddingTop = '10px';
                 eNorthPanel.innerHTML = '<div style="text-align: center;">' + columnsLocalText + '</div>';
@@ -7320,10 +7586,11 @@ var awk;
                     north: eNorthPanel
                 });
             };
-            GroupSelectionPanel.prototype.onGroupingChanged = function () {
-                this.inMemoryRowController.doGrouping();
-                this.inMemoryRowController.updateModel(constants.STEP_EVERYTHING);
-                this.columnController.onColumnStateChanged();
+            GroupSelectionPanel.prototype.onBeforeDrop = function (newItem) {
+                this.columnController.addPivotColumn(newItem);
+            };
+            GroupSelectionPanel.prototype.onItemMoved = function (fromIndex, toIndex) {
+                this.columnController.movePivotColumn(fromIndex, toIndex);
             };
             return GroupSelectionPanel;
         })();
@@ -7455,8 +7722,8 @@ var awk;
             ValuesSelectionPanel.prototype.getLayout = function () {
                 return this.layout;
             };
-            ValuesSelectionPanel.prototype.columnsChanged = function (newColumns, newGroupedColumns, newValuesColumns) {
-                this.cColumnList.setModel(newValuesColumns);
+            ValuesSelectionPanel.prototype.columnsChanged = function (allColumns, pivotColumns, valueColumns) {
+                this.cColumnList.setModel(valueColumns);
             };
             ValuesSelectionPanel.prototype.addDragSource = function (dragSource) {
                 this.cColumnList.addDragSource(dragSource);
@@ -7470,18 +7737,14 @@ var awk;
                 eResult.appendChild(eRemove);
                 var that = this;
                 eRemove.addEventListener('click', function () {
-                    var model = that.cColumnList.getModel();
-                    model.splice(model.indexOf(column), 1);
-                    that.cColumnList.setModel(model);
-                    that.onValuesChanged();
+                    that.columnController.removeValueColumn(column);
                 });
                 var agValueType = new grid.AgDropdownList(this.popupService);
                 agValueType.setModel([constants.SUM, constants.MIN, constants.MAX]);
                 agValueType.setSelected(column.aggFunc);
                 agValueType.setWidth(45);
                 agValueType.addItemSelectedListener(function (item) {
-                    column.aggFunc = item;
-                    that.onValuesChanged();
+                    that.columnController.setColumnAggFunction(column, item);
                 });
                 eResult.appendChild(agValueType.getGui());
                 var eValue = document.createElement('span');
@@ -7496,10 +7759,10 @@ var awk;
                 var emptyMessage = localeTextFunc('valueColumnsEmptyMessage', 'Drag columns from above to create values');
                 this.cColumnList = new grid.AgList();
                 this.cColumnList.setCellRenderer(this.cellRenderer.bind(this));
-                this.cColumnList.addModelChangedListener(this.onValuesChanged.bind(this));
                 this.cColumnList.setEmptyMessage(emptyMessage);
                 this.cColumnList.addStyles({ height: '100%', overflow: 'auto' });
                 this.cColumnList.addBeforeDropListener(this.beforeDropListener.bind(this));
+                this.cColumnList.setReadOnly(true);
                 var eNorthPanel = document.createElement('div');
                 eNorthPanel.style.paddingTop = '10px';
                 eNorthPanel.innerHTML = '<div style="text-align: center;">' + columnsLocalText + '</div>';
@@ -7509,13 +7772,7 @@ var awk;
                 });
             };
             ValuesSelectionPanel.prototype.beforeDropListener = function (newItem) {
-                if (!newItem.aggFunc) {
-                    newItem.aggFunc = constants.SUM;
-                }
-            };
-            ValuesSelectionPanel.prototype.onValuesChanged = function () {
-                var api = this.gridOptionsWrapper.getApi();
-                api.recomputeAggregates();
+                this.columnController.addValueColumn(newItem);
             };
             return ValuesSelectionPanel;
         })();
@@ -7603,9 +7860,10 @@ var awk;
         grid.ToolPanel = ToolPanel;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
+/// <reference path="colDef.ts" />
 /// <reference path="grid.ts" />
 /// <reference path="rendering/rowRenderer.ts" />
-/// <reference path="headerRenderer.ts" />
+/// <reference path="rendering/headerRenderer.ts" />
 var awk;
 (function (awk) {
     var grid;
@@ -7739,11 +7997,11 @@ var awk;
                 return this.getFilterApi(colDef);
             };
             GridApi.prototype.getFilterApi = function (key) {
-                var column = this.grid.columnModel.getColumn(key);
+                var column = this.columnController.getColumn(key);
                 return this.filterManager.getFilterApi(column);
             };
             GridApi.prototype.getColumnDef = function (key) {
-                var column = this.grid.columnModel.getColumn(key);
+                var column = this.columnController.getColumn(key);
                 if (column) {
                     return column.colDef;
                 }
@@ -7789,9 +8047,6 @@ var awk;
             };
             GridApi.prototype.setColumnState = function (state) {
                 this.columnController.setState(state);
-                this.inMemoryRowController.doGrouping();
-                this.inMemoryRowController.updateModel(_grid.Constants.STEP_EVERYTHING);
-                this.grid.refreshHeaderAndBody();
             };
             GridApi.prototype.doLayout = function () {
                 this.grid.doLayout();
@@ -7811,10 +8066,10 @@ var awk;
         var ValueService = (function () {
             function ValueService() {
             }
-            ValueService.prototype.init = function (gridOptionsWrapper, expressionService, columnModel) {
+            ValueService.prototype.init = function (gridOptionsWrapper, expressionService, columnController) {
                 this.gridOptionsWrapper = gridOptionsWrapper;
                 this.expressionService = expressionService;
-                this.columnModel = columnModel;
+                this.columnController = columnController;
             };
             ValueService.prototype.getValue = function (column, data, node) {
                 var cellExpressions = this.gridOptionsWrapper.isEnableCellExpressions();
@@ -7858,7 +8113,7 @@ var awk;
                 }
             };
             ValueService.prototype.getValueCallback = function (data, node, field) {
-                var otherColumn = this.columnModel.getColumn(field);
+                var otherColumn = this.columnController.getColumn(field);
                 if (otherColumn) {
                     return this.getValue(otherColumn, data, node);
                 }
@@ -7879,7 +8134,7 @@ var awk;
 /// <reference path="selectionController.ts" />
 /// <reference path="selectionRendererFactory.ts" />
 /// <reference path="rendering/rowRenderer.ts" />
-/// <reference path="headerRenderer.ts" />
+/// <reference path="rendering/headerRenderer.ts" />
 /// <reference path="rowControllers/inMemoryRowController.ts" />
 /// <reference path="rowControllers/virtualPageRowController.ts" />
 /// <reference path="rowControllers/paginationController.ts" />
@@ -7888,7 +8143,7 @@ var awk;
 /// <reference path="gridPanel/gridPanel.ts" />
 /// <reference path="toolPanel/toolPanel.ts" />
 /// <reference path="widgets/agPopupService.ts" />
-/// <reference path="gridOptions.ts" />
+/// <reference path="entities/gridOptions.ts" />
 /// <reference path="gridApi.ts" />
 /// <reference path="valueService.ts" />
 var awk;
@@ -7897,6 +8152,7 @@ var awk;
     (function (grid) {
         var Grid = (function () {
             function Grid(eGridDiv, gridOptions, $scope, $compile, quickFilterOnScope) {
+                this.virtualRowCallbacks = {};
                 this.gridOptions = gridOptions;
                 this.gridOptionsWrapper = new grid.GridOptionsWrapper(this.gridOptions);
                 this.setupComponents($scope, $compile, eGridDiv);
@@ -7909,14 +8165,12 @@ var awk;
                         that.onQuickFilterChanged(newFilter);
                     });
                 }
-                this.virtualRowCallbacks = {};
-                // done when cols change
-                this.setupColumns();
-                this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getAllRows());
                 var forPrint = this.gridOptionsWrapper.isDontUseScrolls();
                 if (!forPrint) {
                     window.addEventListener('resize', this.doLayout.bind(this));
                 }
+                this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getAllRows());
+                this.setupColumns();
                 this.updateModelAndRefresh(grid.Constants.STEP_EVERYTHING);
                 // if no data provided initially, and not doing infinite scrolling, show the loading panel
                 var showLoading = !this.gridOptionsWrapper.getAllRows() && !this.gridOptionsWrapper.isVirtualPaging();
@@ -7961,19 +8215,18 @@ var awk;
                 var popupService = new grid.PopupService();
                 var valueService = new grid.ValueService();
                 var groupCreator = new grid.GroupCreator();
-                var columnModel = columnController.getModel();
                 // initialise all the beans
                 templateService.init($scope);
                 selectionController.init(this, gridPanel, gridOptionsWrapper, $scope, rowRenderer);
-                filterManager.init(this, gridOptionsWrapper, $compile, $scope, columnModel, popupService, valueService);
+                filterManager.init(this, gridOptionsWrapper, $compile, $scope, columnController, popupService, valueService);
                 selectionRendererFactory.init(this, selectionController);
                 columnController.init(this, selectionRendererFactory, gridOptionsWrapper, expressionService, valueService);
-                rowRenderer.init(columnModel, gridOptionsWrapper, gridPanel, this, selectionRendererFactory, $compile, $scope, selectionController, expressionService, templateService, valueService);
-                headerRenderer.init(gridOptionsWrapper, columnController, columnModel, gridPanel, this, filterManager, $scope, $compile);
-                inMemoryRowController.init(gridOptionsWrapper, columnModel, this, filterManager, $scope, groupCreator, valueService);
+                rowRenderer.init(columnController, gridOptionsWrapper, gridPanel, this, selectionRendererFactory, $compile, $scope, selectionController, expressionService, templateService, valueService);
+                headerRenderer.init(gridOptionsWrapper, columnController, gridPanel, this, filterManager, $scope, $compile);
+                inMemoryRowController.init(gridOptionsWrapper, columnController, this, filterManager, $scope, groupCreator, valueService);
                 virtualPageRowController.init(rowRenderer, gridOptionsWrapper, this);
-                gridPanel.init(columnModel, rowRenderer);
-                valueService.init(gridOptionsWrapper, expressionService, columnModel);
+                gridPanel.init(columnController, rowRenderer);
+                valueService.init(gridOptionsWrapper, expressionService, columnController);
                 groupCreator.init(valueService);
                 var toolPanelLayout = null;
                 var toolPanel = null;
@@ -8000,7 +8253,6 @@ var awk;
                 this.rowModel = rowModel;
                 this.selectionController = selectionController;
                 this.columnController = columnController;
-                this.columnModel = columnModel;
                 this.inMemoryRowController = inMemoryRowController;
                 this.virtualPageRowController = virtualPageRowController;
                 this.rowRenderer = rowRenderer;
@@ -8022,6 +8274,18 @@ var awk;
                 // see what the grid options are for default of toolbar
                 this.showToolPanel(gridOptionsWrapper.isShowToolPanel());
                 eUserProvidedDiv.appendChild(this.eRootPanel.getGui());
+                var that = this;
+                columnController.addListener({
+                    valuesChanged: function () {
+                        that.inMemoryRowController.doAggregate();
+                    },
+                    pivotChanged: function () {
+                        that.inMemoryRowController.onPivotChanged();
+                    },
+                    columnsChanged: function () {
+                        that.refreshHeaderAndBody();
+                    }
+                });
             };
             Grid.prototype.showToolPanel = function (show) {
                 if (!this.toolPanel) {
@@ -8170,12 +8434,6 @@ var awk;
                 this.gridPanel.setHeaderHeight();
                 this.columnController.setColumns(this.gridOptionsWrapper.getColumnDefs());
                 this.gridPanel.showPinnedColContainersIfNeeded();
-                this.headerRenderer.refreshHeader();
-                if (!this.gridOptionsWrapper.isDontUseScrolls()) {
-                    this.gridPanel.setPinnedColContainerWidth();
-                    this.gridPanel.setBodyContainerWidth();
-                }
-                this.headerRenderer.updateFilterIcons();
             };
             // rowsToRefresh is at what index to start refreshing the rows. the assumption is
             // if we are expanding or collapsing a group, then only he rows below the group
@@ -8236,7 +8494,7 @@ var awk;
                 }, 10);
             };
             Grid.prototype.getSortModel = function () {
-                var allColumns = this.columnModel.getAllColumns();
+                var allColumns = this.columnController.getAllColumns();
                 var columnsWithSorting = [];
                 var i;
                 for (i = 0; i < allColumns.length; i++) {
@@ -8264,7 +8522,7 @@ var awk;
                 }
                 // first up, clear any previous sort
                 var sortModelProvided = sortModel !== null && sortModel !== undefined && sortModel.length > 0;
-                var allColumns = this.columnModel.getAllColumns();
+                var allColumns = this.columnController.getAllColumns();
                 for (var i = 0; i < allColumns.length; i++) {
                     var column = allColumns[i];
                     var sortForCol = null;

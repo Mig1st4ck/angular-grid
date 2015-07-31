@@ -13,8 +13,6 @@ module awk.grid {
 
     var _ = Utils;
 
-    enum RowType {Normal, GroupSpanningRow, ExpandedRow};
-
     export class RenderedRow {
 
         public vPinnedRow: any;
@@ -77,6 +75,8 @@ module awk.grid {
             var groupHeaderTakesEntireRow = this.gridOptionsWrapper.isGroupUseEntireRow();
             var rowIsHeaderThatSpans = node.group && groupHeaderTakesEntireRow;
 
+            var rowExpandRenderer = this.gridOptionsWrapper.getRowExpandRenderer();
+
             this.vBodyRow = this.createRowContainer();
             if (this.pinning) {
                 this.vPinnedRow = this.createRowContainer();
@@ -86,7 +86,7 @@ module awk.grid {
             this.node = node;
             this.scope = this.createChildScopeOrNull(node.data);
 
-            if (!rowIsHeaderThatSpans) {
+            if (!rowIsHeaderThatSpans && !rowExpandRenderer) {
                 this.drawNormalRow();
             }
 
@@ -113,6 +113,9 @@ module awk.grid {
             // if group item, insert the first row
             if (rowIsHeaderThatSpans) {
                 this.createGroupRow();
+            }
+            if (rowExpandRenderer) {
+                this.createExpandedRow();
             }
 
             this.bindVirtualElement(this.vBodyRow);
@@ -257,7 +260,7 @@ module awk.grid {
             return eRow;
         }
 
-        private drawExpandedRow(){
+        private createExpandedRow(){
             if (this.node.first) {
                 var params = {
                     node: this.node.parent,
@@ -266,13 +269,13 @@ module awk.grid {
                     api: this.gridOptionsWrapper.getApi()
                 };
                 var eGroupRow = this.gridOptionsWrapper.gridOptions.expandRow(params);
-                this.bodyElement.style.height = (this.gridOptionsWrapper.getRowHeight() * this.node.parent.rows) + 'px';
-                this.bodyElement.appendChild(eGroupRow);
+                this.vBodyRow.style.height = (this.gridOptionsWrapper.getRowHeight() * this.node.parent.rows) + 'px';
+                this.vBodyRow.appendChild(eGroupRow);
             }
             if (this.node.group) {
                 this.drawNormalRow();
             } else if (!this.node.first) {
-                this.bodyElement.style.display = 'none';
+                this.vBodyRow.style.display = 'none';
                 return;
             }
         }

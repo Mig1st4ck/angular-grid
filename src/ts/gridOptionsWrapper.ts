@@ -85,7 +85,7 @@ module awk.grid {
         isSuppressScrollLag() { return isTrue(this.gridOptions.suppressScrollLag); }
         setSelectedRows(newSelectedRows: any) { return this.gridOptions.selectedRows = newSelectedRows; }
         setSelectedNodesById(newSelectedNodes: any) { return this.gridOptions.selectedNodesById = newSelectedNodes; }
-        isDoInternalExpanding() { return !this.isRowsAlreadyExpanded() && this.gridOptions.expandRow; }
+        getRowExpandRenderer() { return this.gridOptions.expandRow; }
         getIcons() { return this.gridOptions.icons; }
         getIsScrollLag() { return this.gridOptions.isScrollLag; }
 
