@@ -1245,7 +1245,7 @@ declare module awk.grid {
 }
 declare module awk.grid {
     interface GridOptions {
-        expandedRowsDefault: number;
+        expandedRowsDefault?: number;
         rowSelection?: string;
         rowDeselection?: boolean;
         context?: any;
@@ -1320,7 +1320,7 @@ declare module awk.grid {
         headerHeight?: number;
         pinnedColumnCount?: number;
         localeText?: any;
-        expandRow: any;
+        expandRow?: any;
         isScrollLag?(): boolean;
         suppressScrollLag?(): boolean;
     }

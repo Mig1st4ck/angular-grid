@@ -1,6 +1,6 @@
 /**
  * angular-grid - High performance and feature rich data grid for AngularJS
- * @version v1.12.5
+ * @version v1.12.6
  * @link http://www.angulargrid.com/
  * @license MIT
  */
