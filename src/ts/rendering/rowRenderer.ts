@@ -1,7 +1,7 @@
-/// <reference path="utils.ts" />
-/// <reference path="constants.ts" />
+/// <reference path="../utils.ts" />
+/// <reference path="../constants.ts" />
 /// <reference path="renderedRow.ts" />
-/// <reference path="cellRenderers/groupCellRendererFactory.ts" />
+/// <reference path="../cellRenderers/groupCellRendererFactory.ts" />
 
 module awk.grid {
 
@@ -29,10 +29,12 @@ module awk.grid {
         private firstVirtualRenderedRow: any;
         private lastVirtualRenderedRow: any;
         private focusedCell: any;
+        private valueService: ValueService;
 
-        init(columnModel: any, gridOptionsWrapper: GridOptionsWrapper, gridPanel: GridPanel,
-             angularGrid: Grid, selectionRendererFactory: SelectionRendererFactory, $compile: any, $scope: any,
-             selectionController: SelectionController, expressionService: ExpressionService, templateService: TemplateService) {
+        public init(columnModel: any, gridOptionsWrapper: GridOptionsWrapper, gridPanel: GridPanel,
+                    angularGrid: Grid, selectionRendererFactory: SelectionRendererFactory, $compile: any, $scope: any,
+                    selectionController: SelectionController, expressionService: ExpressionService,
+                    templateService: TemplateService, valueService: ValueService) {
             this.columnModel = columnModel;
             this.gridOptionsWrapper = gridOptionsWrapper;
             this.angularGrid = angularGrid;
@@ -43,6 +45,7 @@ module awk.grid {
             this.selectionController = selectionController;
             this.expressionService = expressionService;
             this.templateService = templateService;
+            this.valueService = valueService;
             this.findAllElements(gridPanel);
 
             this.cellRendererMap = {
@@ -54,11 +57,11 @@ module awk.grid {
             this.renderedRows = {};
         }
 
-        setRowModel(rowModel: any) {
+        public setRowModel(rowModel: any) {
             this.rowModel = rowModel;
         }
 
-        setMainRowWidths() {
+        public setMainRowWidths() {
             var mainRowWidth = this.columnModel.getBodyContainerWidth() + "px";
 
             var unpinnedRows: [any] = this.eBodyContainer.querySelectorAll(".ag-row");
@@ -67,14 +70,14 @@ module awk.grid {
             }
         }
 
-        findAllElements(gridPanel: any) {
+        private findAllElements(gridPanel: any) {
             this.eBodyContainer = gridPanel.getBodyContainer();
             this.eBodyViewport = gridPanel.getBodyViewport();
             this.ePinnedColsContainer = gridPanel.getPinnedColsContainer();
             this.eParentOfRows = gridPanel.getRowsParent();
         }
 
-        refreshView(refreshFromIndex?: any) {
+        public refreshView(refreshFromIndex?: any) {
             if (!this.gridOptionsWrapper.isDontUseScrolls()) {
                 var rowCount = this.rowModel.getVirtualRowCount();
                 var containerHeight = this.gridOptionsWrapper.getRowHeight() * rowCount;
@@ -85,13 +88,13 @@ module awk.grid {
             this.refreshAllVirtualRows(refreshFromIndex);
         }
 
-        softRefreshView() {
+        public softRefreshView() {
             _.iterateObject(this.renderedRows, (key: any, renderedRow: RenderedRow)=> {
                 renderedRow.softRefresh();
             });
         }
 
-        rowDataChanged(rows: any) {
+        public rowDataChanged(rows: any) {
             // we only need to be worried about rendered rows, as this method is
             // called to whats rendered. if the row isn't rendered, we don't care
             var indexesToRemove: any = [];
@@ -99,20 +102,20 @@ module awk.grid {
             Object.keys(renderedRows).forEach(function (key: any) {
                 var renderedRow = renderedRows[key];
                 // see if the rendered row is in the list of rows we have to update
-                if (renderedRow.isRowDataChanged(rows)) {
+                if (renderedRow.isDataInList(rows)) {
                     indexesToRemove.push(key);
                 }
             });
             // remove the rows
-            this.removeVirtualRows(indexesToRemove);
+            this.removeVirtualRow(indexesToRemove);
             // add draw them again
             this.drawVirtualRows();
         }
 
-        refreshAllVirtualRows(fromIndex: any) {
+        private refreshAllVirtualRows(fromIndex: any) {
             // remove all current virtual rows, as they have old data
             var rowsToRemove = Object.keys(this.renderedRows);
-            this.removeVirtualRows(rowsToRemove, fromIndex);
+            this.removeVirtualRow(rowsToRemove, fromIndex);
 
             // add in new rows
             this.drawVirtualRows();
@@ -130,19 +133,19 @@ module awk.grid {
                 }
             });
             // remove the rows
-            this.removeVirtualRows(rowsToRemove);
+            this.removeVirtualRow(rowsToRemove);
             // and draw them back again
             this.ensureRowsRendered();
         }
 
         // takes array of row indexes
-        removeVirtualRows(rowsToRemove: any, fromIndex?: any) {
+        private removeVirtualRow(rowsToRemove: any, fromIndex?: any) {
             var that = this;
             // if no fromIndex then set to -1, which will refresh everything
             var realFromIndex = (typeof fromIndex === 'number') ? fromIndex : -1;
             rowsToRemove.forEach(function (indexToRemove: any) {
                 if (indexToRemove >= realFromIndex) {
-                    that.removeVirtualRow(indexToRemove);
+                    that.unbindVirtualRow(indexToRemove);
 
                     // if the row was last to have focus, we remove the fact that it has focus
                     if (that.focusedCell && that.focusedCell.rowIndex == indexToRemove) {
@@ -152,16 +155,8 @@ module awk.grid {
             });
         }
 
-        removeVirtualRow(indexToRemove: any) {
+        private unbindVirtualRow(indexToRemove: any) {
             var renderedRow = this.renderedRows[indexToRemove];
-            if (renderedRow.pinnedElement && this.ePinnedColsContainer) {
-                this.ePinnedColsContainer.removeChild(renderedRow.pinnedElement);
-            }
-
-            if (renderedRow.bodyElement) {
-                this.eBodyContainer.removeChild(renderedRow.bodyElement);
-            }
-
             renderedRow.destroy();
 
             if (this.gridOptionsWrapper.getVirtualRowRemoved()) {
@@ -172,7 +167,7 @@ module awk.grid {
             delete this.renderedRows[indexToRemove];
         }
 
-        drawVirtualRows() {
+        public drawVirtualRows() {
             var first: any;
             var last: any;
 
@@ -208,17 +203,17 @@ module awk.grid {
             this.ensureRowsRendered();
         }
 
-        getFirstVirtualRenderedRow() {
+        public getFirstVirtualRenderedRow() {
             return this.firstVirtualRenderedRow;
         }
 
-        getLastVirtualRenderedRow() {
+        public getLastVirtualRenderedRow() {
             return this.lastVirtualRenderedRow;
         }
 
-        ensureRowsRendered() {
+        private ensureRowsRendered() {
 
-            var start = new Date().getTime();
+            //var start = new Date().getTime();
 
             var mainRowWidth = this.columnModel.getBodyContainerWidth();
             var that = this;
@@ -241,7 +236,7 @@ module awk.grid {
             }
 
             // at this point, everything in our 'rowsToRemove' . . .
-            this.removeVirtualRows(rowsToRemove);
+            this.removeVirtualRow(rowsToRemove);
 
             // if we are doing angular compiling, then do digest the scope here
             if (this.gridOptionsWrapper.isAngularCompileRows()) {
@@ -251,34 +246,27 @@ module awk.grid {
                 }, 0);
             }
 
-            var end = new Date().getTime();
-            console.log(end-start);
+            //var end = new Date().getTime();
+            //console.log(end-start);
         }
 
-        insertRow(node: any, rowIndex: any, mainRowWidth: any) {
+        private insertRow(node: any, rowIndex: any, mainRowWidth: any) {
             var columns = this.columnModel.getDisplayedColumns();
             // if no cols, don't draw row
             if (!columns || columns.length == 0) {
                 return;
             }
 
-            var renderedRow = new RenderedRow(this.gridOptionsWrapper, this.$scope, this.angularGrid,
+            var renderedRow = new RenderedRow(this.gridOptionsWrapper, this.valueService, this.$scope, this.angularGrid,
                 this.columnModel, this.expressionService, this.cellRendererMap, this.selectionRendererFactory,
-                this.$compile, this.templateService, this.selectionController, this);
-            renderedRow.init(node, rowIndex);
+                this.$compile, this.templateService, this.selectionController, this,
+                this.eBodyContainer, this.ePinnedColsContainer, node, rowIndex);
             renderedRow.setMainRowWidth(mainRowWidth);
 
             this.renderedRows[rowIndex] = renderedRow;
-
-            //try compiling as we insert rows
-            this.eBodyContainer.appendChild(renderedRow.bodyElement);
-            var pinning = columns[0].pinned;
-            if (pinning) {
-                this.ePinnedColsContainer.appendChild(renderedRow.pinnedElement);
-            }
         }
 
-        getIndexOfRenderedNode(node: any): number {
+        public getIndexOfRenderedNode(node: any): number {
             var renderedRows = this.renderedRows;
             var keys: string[] = Object.keys(renderedRows);
             for (var i = 0; i < keys.length; i++) {
@@ -292,7 +280,7 @@ module awk.grid {
 
         // we use index for rows, but column object for columns, as the next column (by index) might not
         // be visible (header grouping) so it's not reliable, so using the column object instead.
-        navigateToNextCell(key: any, rowIndex: any, column: any) {
+        public navigateToNextCell(key: any, rowIndex: number, column: Column) {
 
             var cellToFocus = {rowIndex: rowIndex, column: column};
             var renderedRow: RenderedRow;
@@ -314,10 +302,10 @@ module awk.grid {
             this.gridPanel.ensureIndexVisible(renderedRow.getRowIndex());
 
             // this changes the css on the cell
-            this.focusCell(eCell, cellToFocus.rowIndex, cellToFocus.column.index, true);
+            this.focusCell(eCell, cellToFocus.rowIndex, cellToFocus.column.index, cellToFocus.column.colDef, true);
         }
 
-        getNextCellToFocus(key: any, lastCellToFocus: any) {
+        private getNextCellToFocus(key: any, lastCellToFocus: any) {
             var lastRowIndex = lastCellToFocus.rowIndex;
             var lastColumn = lastCellToFocus.column;
 
@@ -366,8 +354,14 @@ module awk.grid {
             };
         }
 
+        public onRowSelected(rowIndex: number, selected: boolean) {
+            if (this.renderedRows[rowIndex]) {
+                this.renderedRows[rowIndex].onRowSelected(selected);
+            }
+        }
+
         // called by the renderedRow
-        public focusCell(eCell: any, rowIndex: any, colIndex: any, forceBrowserFocus: any) {
+        public focusCell(eCell: any, rowIndex: number, colIndex: number, colDef: ColDef, forceBrowserFocus: any) {
             // do nothing if cell selection is off
             if (this.gridOptionsWrapper.isSuppressCellSelection()) {
                 return;
@@ -379,7 +373,7 @@ module awk.grid {
             var selectorForCell = '[row="' + rowIndex + '"] [col="' + colIndex + '"]';
             _.querySelectorAll_replaceCssClass(this.eParentOfRows, selectorForCell, 'ag-cell-no-focus', 'ag-cell-focus');
 
-            this.focusedCell = {rowIndex: rowIndex, colIndex: colIndex, node: this.rowModel.getVirtualRow(rowIndex)};
+            this.focusedCell = {rowIndex: rowIndex, colIndex: colIndex, node: this.rowModel.getVirtualRow(rowIndex), colDef: colDef};
 
             // this puts the browser focus on the cell (so it gets key presses)
             if (forceBrowserFocus) {
@@ -392,17 +386,17 @@ module awk.grid {
         }
 
         // for API
-        getFocusedCell() {
+        public getFocusedCell() {
             return this.focusedCell;
         }
 
         // called via API
-        setFocusedCell(rowIndex: any, colIndex: any) {
+        public setFocusedCell(rowIndex: any, colIndex: any) {
             var renderedRow = this.renderedRows[rowIndex];
             var column = this.columnModel.getDisplayedColumns()[colIndex];
             if (renderedRow && column) {
                 var eCell = renderedRow.getCellForCol(column.colId);
-                this.focusCell(eCell, rowIndex, colIndex, true);
+                this.focusCell(eCell, rowIndex, colIndex, column.colDef, true);
             }
         }
 

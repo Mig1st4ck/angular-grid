@@ -1,12 +1,13 @@
-/// <reference path="gridOptionsWrapper.ts" />
-/// <reference path="grid.ts" />
-/// <reference path="utils.ts" />
-/// <reference path="columnController.ts" />
-/// <reference path="expressionService.ts" />
+/// <reference path="../gridOptionsWrapper.ts" />
+/// <reference path="../grid.ts" />
+/// <reference path="../utils.ts" />
+/// <reference path="../columnController.ts" />
+/// <reference path="../expressionService.ts" />
 /// <reference path="rowRenderer.ts" />
-/// <reference path="templateService.ts" />
-/// <reference path="selectionController.ts" />
+/// <reference path="../templateService.ts" />
+/// <reference path="../selectionController.ts" />
 /// <reference path="renderedCell.ts" />
+/// <reference path="../virtualDom/vHtmlElement.ts" />
 
 module awk.grid {
 
@@ -16,10 +17,8 @@ module awk.grid {
 
     export class RenderedRow {
 
-        public pinnedElement: any;
-        public bodyElement: any;
-
-        private type: RowType;
+        public vPinnedRow: any;
+        public vBodyRow: any;
 
         private renderedCells: {[key: number]: RenderedCell} = {};
         private scope: any;
@@ -31,7 +30,7 @@ module awk.grid {
         private gridOptionsWrapper: GridOptionsWrapper;
         private parentScope: any;
         private angularGrid: Grid;
-        private columns: Column[];
+        private columnController: ColumnController;
         private expressionService: ExpressionService;
         private rowRenderer: RowRenderer;
         private selectionRendererFactory: SelectionRendererFactory;
@@ -39,62 +38,105 @@ module awk.grid {
         private templateService: TemplateService;
         private selectionController: SelectionController;
         private pinning: boolean;
+        private eBodyContainer: HTMLElement;
+        private ePinnedContainer: HTMLElement;
+        private valueService: ValueService;
 
         constructor(gridOptionsWrapper: GridOptionsWrapper,
+                    valueService: ValueService,
                     parentScope: any,
                     angularGrid: Grid,
-                    columnModel: any,
+                    columnController: ColumnController,
                     expressionService: ExpressionService,
                     cellRendererMap: {[key: string]: any},
                     selectionRendererFactory: SelectionRendererFactory,
                     $compile: any,
                     templateService: TemplateService,
                     selectionController: SelectionController,
-                    rowRenderer: RowRenderer) {
+                    rowRenderer: RowRenderer,
+                    eBodyContainer: HTMLElement,
+                    ePinnedContainer: HTMLElement,
+                    node: any,
+                    rowIndex: number) {
             this.gridOptionsWrapper = gridOptionsWrapper;
+            this.valueService = valueService;
             this.parentScope = parentScope;
             this.angularGrid = angularGrid;
             this.expressionService = expressionService;
-            this.columns = columnModel.getDisplayedColumns();
+            this.columnController = columnController;
             this.cellRendererMap = cellRendererMap;
             this.selectionRendererFactory = selectionRendererFactory;
             this.$compile = $compile;
             this.templateService = templateService;
             this.selectionController = selectionController;
             this.rowRenderer = rowRenderer;
-            this.pinning = this.columns[0].pinned;
-        }
+            this.eBodyContainer = eBodyContainer;
+            this.ePinnedContainer = ePinnedContainer;
+            this.pinning = columnController.isPinning();
 
-        public init(node: any, rowIndex: number) {
+            var groupHeaderTakesEntireRow = this.gridOptionsWrapper.isGroupUseEntireRow();
+            var rowIsHeaderThatSpans = node.group && groupHeaderTakesEntireRow;
+
+            this.vBodyRow = this.createRowContainer();
+            if (this.pinning) {
+                this.vPinnedRow = this.createRowContainer();
+            }
+
             this.rowIndex = rowIndex;
             this.node = node;
             this.scope = this.createChildScopeOrNull(node.data);
-            this.bodyElement = this.createRowContainer();
+
+            if (!rowIsHeaderThatSpans) {
+                this.drawNormalRow();
+            }
+
+            this.addDynamicStyles();
+            this.addDynamicClasses();
+
+            this.vBodyRow.setAttribute('row', this.rowIndex.toString());
             if (this.pinning) {
-                this.pinnedElement = this.createRowContainer();
+                this.vPinnedRow.setAttribute('row', this.rowIndex.toString());
+            }
+
+            // if showing scrolls, position on the container
+            if (!this.gridOptionsWrapper.isDontUseScrolls()) {
+                this.vBodyRow.style.top = (this.gridOptionsWrapper.getRowHeight() * this.rowIndex) + "px";
+                if (this.pinning) {
+                    this.vPinnedRow.style.top = (this.gridOptionsWrapper.getRowHeight() * this.rowIndex) + "px";
+                }
+            }
+            this.vBodyRow.style.height = (this.gridOptionsWrapper.getRowHeight()) + "px";
+            if (this.pinning) {
+                this.vPinnedRow.style.height = (this.gridOptionsWrapper.getRowHeight()) + "px";
             }
 
             // if group item, insert the first row
-            var groupHeaderTakesEntireRow = this.gridOptionsWrapper.isGroupUseEntireRow();
-            var drawGroupRow = node.group && groupHeaderTakesEntireRow;
+            if (rowIsHeaderThatSpans) {
+                this.createGroupRow();
+            }
 
-            if (drawGroupRow) {
-                this.drawGroupRow();
-                this.type = RowType.GroupSpanningRow;
-            } else if (this.gridOptionsWrapper.isDoInternalExpanding()) {
-                this.drawExpandedRow();
-                this.type = RowType.ExpandedRow;
-            } else {
-                this.drawNormalRow();
-                this.type = RowType.Normal;
+            this.bindVirtualElement(this.vBodyRow);
+            if (this.pinning) {
+                this.bindVirtualElement(this.vPinnedRow);
             }
 
             if (this.scope) {
-                this.$compile(this.bodyElement)(this.scope);
+                this.$compile(this.vBodyRow.getElement())(this.scope);
                 if (this.pinning) {
-                    this.$compile(this.pinnedElement)(this.scope);
+                    this.$compile(this.vPinnedRow.getElement())(this.scope);
                 }
             }
+
+            this.eBodyContainer.appendChild(this.vBodyRow.getElement());
+            if (this.pinning) {
+                this.ePinnedContainer.appendChild(this.vPinnedRow.getElement());
+            }
+        }
+
+        public onRowSelected(selected: boolean): void {
+            _.iterateObject(this.renderedCells, (key: any, renderedCell: RenderedCell)=> {
+                renderedCell.setSelected(selected);
+            });
         }
 
         public softRefresh(): void {
@@ -112,19 +154,29 @@ module awk.grid {
         public getCellForCol(column: Column): any {
             var renderedCell = this.renderedCells[column.index];
             if (renderedCell) {
-                return renderedCell.getGridCell();
+                return renderedCell.getVGridCell().getElement();
             } else {
                 return null;
             }
         }
 
         public destroy(): void {
+            this.destroyScope();
+
+            if (this.pinning) {
+                this.ePinnedContainer.removeChild(this.vPinnedRow.getElement());
+            }
+            this.eBodyContainer.removeChild(this.vBodyRow.getElement());
+        }
+
+        private destroyScope(): void {
             if (this.scope) {
                 this.scope.$destroy();
+                this.scope = null;
             }
         }
 
-        public isRowDataChanged(rows: any[]): boolean {
+        public isDataInList(rows: any[]): boolean {
             return rows.indexOf(this.node.data) >= 0;
         }
 
@@ -133,35 +185,44 @@ module awk.grid {
         }
 
         private drawNormalRow() {
-            for (var i = 0; i<this.columns.length; i++) {
-                var column = this.columns[i];
+            var columns = this.columnController.getDisplayedColumns();
+            for (var i = 0; i<columns.length; i++) {
+                var column = columns[i];
                 var firstCol = i === 0;
 
-                var renderedCell = new RenderedCell(firstCol, column, this.node, this.rowIndex, this.scope,
+                var renderedCell = new RenderedCell(firstCol, column,
                     this.$compile, this.rowRenderer, this.gridOptionsWrapper, this.expressionService,
                     this.selectionRendererFactory, this.selectionController, this.templateService,
-                    this.cellRendererMap);
+                    this.cellRendererMap, this.node, this.rowIndex, this.scope, this.columnController,
+                    this.valueService);
 
-                var eGridCell = renderedCell.getGridCell();
+                var vGridCell = renderedCell.getVGridCell();
+
                 if (column.pinned) {
-                    this.pinnedElement.appendChild(eGridCell);
+                    this.vPinnedRow.appendChild(vGridCell);
                 } else {
-                    this.bodyElement.appendChild(eGridCell);
+                    this.vBodyRow.appendChild(vGridCell);
                 }
 
                 this.renderedCells[column.index] = renderedCell;
             }
         }
 
-        private drawGroupRow() {
-            var eGroupRow = this.createGroupSpanningEntireRowCell(false);
-            if (this.pinning) {
-                this.pinnedElement.appendChild(eGroupRow);
+        private bindVirtualElement(vElement: awk.vdom.VHtmlElement): void {
+            var html = vElement.toHtmlString();
+            var element: Element = <Element> _.loadTemplate(html);
+            vElement.elementAttached(element);
+        }
 
+        private createGroupRow() {
+            var eGroupRow = this.createGroupSpanningEntireRowCell(false);
+
+            if (this.pinning) {
+                this.vPinnedRow.appendChild(eGroupRow);
                 var eGroupRowPadding = this.createGroupSpanningEntireRowCell(true);
-                this.bodyElement.appendChild(eGroupRowPadding);
+                this.vBodyRow.appendChild(eGroupRowPadding);
             } else {
-                this.bodyElement.appendChild(eGroupRow);
+                this.vBodyRow.appendChild(eGroupRow);
             }
         }
 
@@ -217,7 +278,7 @@ module awk.grid {
         }
 
         public setMainRowWidth(width: number) {
-            this.bodyElement.style.width = width + "px";
+            this.vBodyRow.addStyles({width: width + "px"});
         }
 
         private createChildScopeOrNull(data: any) {
@@ -230,19 +291,7 @@ module awk.grid {
             }
         }
 
-        private createRowContainer() {
-            var eRow = document.createElement("div");
-
-            this.addClassesToRow(eRow);
-
-            eRow.setAttribute('row', this.rowIndex.toString());
-
-            // if showing scrolls, position on the container
-            if (!this.gridOptionsWrapper.isDontUseScrolls()) {
-                eRow.style.top = (this.gridOptionsWrapper.getRowHeight() * this.rowIndex) + "px";
-            }
-            eRow.style.height = (this.gridOptionsWrapper.getRowHeight()) + "px";
-
+        private addDynamicStyles() {
             if (this.gridOptionsWrapper.getRowStyle()) {
                 var cssToUse: any;
                 var rowStyle = this.gridOptionsWrapper.getRowStyle();
@@ -259,19 +308,21 @@ module awk.grid {
                     cssToUse = rowStyle;
                 }
 
-                if (cssToUse) {
-                    Object.keys(cssToUse).forEach(function (key: any) {
-                        eRow.style[key] = cssToUse[key];
-                    });
+                this.vBodyRow.addStyles(cssToUse);
+                if (this.pinning) {
+                    this.vPinnedRow.addStyles(cssToUse);
                 }
             }
+        }
 
+        private createRowContainer() {
+            var vRow = new awk.vdom.VHtmlElement('div');
             var that = this;
-            eRow.addEventListener("click", function (event) {
+            vRow.addEventListener("click", function (event) {
                 that.angularGrid.onRowClicked(event, Number(this.getAttribute("row")), that.node)
             });
 
-            return eRow;
+            return vRow;
         }
 
         public getRowNode(): any {
@@ -282,33 +333,39 @@ module awk.grid {
             return this.rowIndex;
         }
 
-        private addClassesToRow(eRow: any) {
-            var classesList = ["ag-row"];
-            classesList.push(this.rowIndex % 2 == 0 ? "ag-row-even" : "ag-row-odd");
+        private addDynamicClasses() {
+            var classes: string[] = [];
+
+            classes.push('ag-row');
+
+            classes.push(this.rowIndex % 2 == 0 ? "ag-row-even" : "ag-row-odd");
+
+            if (this.selectionController.isNodeSelected(this.node)) {
+                classes.push("ag-row-selected");
+            }
 
             if (this.node.group) {
+                classes.push("ag-row-group");
                 // if a group, put the level of the group in
-                classesList.push("ag-row-level-" + this.node.level);
+                classes.push("ag-row-level-" + this.node.level);
+
+                if (!this.node.footer && this.node.expanded) {
+                    classes.push("ag-row-group-expanded");
+                }
+                if (!this.node.footer && !this.node.expanded) {
+                    // opposite of expanded is contracted according to the internet.
+                    classes.push("ag-row-group-contracted");
+                }
+                if (this.node.footer) {
+                    classes.push("ag-row-footer");
+                }
             } else {
                 // if a leaf, and a parent exists, put a level of the parent, else put level of 0 for top level item
                 if (this.node.parent) {
-                    classesList.push("ag-row-level-" + (this.node.parent.level + 1));
+                    classes.push("ag-row-level-" + (this.node.parent.level + 1));
                 } else {
-                    classesList.push("ag-row-level-0");
+                    classes.push("ag-row-level-0");
                 }
-            }
-            if (this.node.group) {
-                classesList.push("ag-row-group");
-            }
-            if (this.node.group && !this.node.footer && this.node.expanded) {
-                classesList.push("ag-row-group-expanded");
-            }
-            if (this.node.group && !this.node.footer && !this.node.expanded) {
-                // opposite of expanded is contracted according to the internet.
-                classesList.push("ag-row-group-contracted");
-            }
-            if (this.node.group && this.node.footer) {
-                classesList.push("ag-row-footer");
             }
 
             // add in extra classes provided by the config
@@ -331,18 +388,19 @@ module awk.grid {
 
                 if (classToUse) {
                     if (typeof classToUse === 'string') {
-                        classesList.push(classToUse);
+                        classes.push(classToUse);
                     } else if (Array.isArray(classToUse)) {
                         classToUse.forEach(function (classItem: any) {
-                            classesList.push(classItem);
+                            classes.push(classItem);
                         });
                     }
                 }
             }
 
-            var classes = classesList.join(" ");
-
-            eRow.className = classes;
+            this.vBodyRow.addClasses(classes);
+            if (this.pinning) {
+                this.vPinnedRow.addClasses(classes);
+            }
         }
     }
 

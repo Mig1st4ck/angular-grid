@@ -1,3 +1,4 @@
+/// <reference path="colDef.ts" />
 
 module awk.grid {
 
@@ -28,7 +29,6 @@ module awk.grid {
         rowClass?: any;
         headerCellRenderer?: any;
         api?: any; // change to typed
-        enableColResize?: boolean;
         groupDefaultExpanded?: any;
         groupKeys?: string[];
         groupAggFunction?(nodes: any[]): any;
@@ -36,6 +36,7 @@ module awk.grid {
         rowData?: any[];
         groupUseEntireRow?: boolean;
         groupColumnDef?: any; // change to typed
+        groupSuppressRow?: boolean;
         angularCompileRows?: boolean;
         angularCompileFilters?: boolean;
         angularCompileHeaders?: boolean;
@@ -54,9 +55,14 @@ module awk.grid {
         afterSortChanged?(): void;
         virtualRowRemoved?(row: any, rowIndex: number): void;
         rowClicked?(params: any): void;
+        columnResized?(column: Column):void;
+        columnVisibilityChanged?(columns: Column[]):void;
+        columnOrderChanged?(columns: Column[]):void;
         datasource?: any; // should be typed
         ready?(api: any): void; // should be typed
         rowBuffer?: number;
+        enableColResize?: boolean;
+        enableCellExpressions?: boolean;
         enableSorting?: boolean;
         enableServerSideSorting?: boolean;
         enableFilter?: boolean;
@@ -71,6 +77,8 @@ module awk.grid {
         pinnedColumnCount?: number;
         localeText?: any;
         expandRow: any;
+        isScrollLag?(): boolean;
+        suppressScrollLag?(): boolean;
     }
 
 }

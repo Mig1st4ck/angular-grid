@@ -6,115 +6,54 @@ $pageKeyboards = "AngularJS Angular Grid Documentation";
 include 'documentation_header.php';
 ?>
 
-<div style="text-align: center">
-    <a href="http://angularconnect.com/"><img src="images/angularConnectBanner.png"/></a>
+<div style="overflow: hidden; border: 1px solid darkgrey; background-color: #eee; padding: 10px;">
+    <div style="float: left;">
+        <img src="images/star.png"/>
+    </div>
+    <div style="float: right;">
+        <iframe src="https://ghbtns.com/github-btn.html?user=ceolter&repo=angular-grid&type=star&count=true&size=large"
+                frameborder="0" scrolling="0" width="160px" height="30px">
+        </iframe>
+        <iframe src="https://ghbtns.com/github-btn.html?user=ceolter&repo=angular-grid&type=watch&count=true&size=large&v=2"
+                frameborder="0" scrolling="0" width="160px" height="30px">
+        </iframe>
+    </div>
+    <div style="text-align: center; font-weight: bold; font-size: 22px;">
+        Show your support, star Angular Grid on Github
+    </div>
 </div>
 
 <div style="border: 1px solid darkgrey; background-color: #eee; padding: 10px; margin: 30px 5px 5px 5px;"
      xmlns="http://www.w3.org/1999/html">
 
     <p>
-        <b>12th July 2015</b>
+        <b>26th July 2015</b>
     </p>
 
     <p>
-        So I spent the entire weekend (that's a lie, I also played a lot of Bloodborne, and watched the
-        Colin Mcgregor fight) implementing a Virtual DOM. What REACT said made sense to me, maybe if I
-        implemented my own virtual DOM, I could put Angular Grid on steroids????
-    </p>
-    <p>
-        Well, it made it go faster, but not Ben Johnson faster. Here are some results of tests ran. The test
-        composed of creating a grid with 100,000 rows using the test drive, then timing how long it took the
-        grid to refresh after jumping to a random line number on the grid (in other words, how long it took to
-        redraw a full 'viewable page' of rows after a scroll).
-        <style>
-            .mytable table {
-                border: 1px solid gray;
-            }
-            .mytable td {
-                border: 1px solid gray;
-                padding: 2px;
-            }
-            .mytable th {
-                border: 1px solid gray;
-                padding: 2px;
-            }
-        </style>
-        <table class="mytable">
-            <tr>
-                <th>Browser</th>
-                <th>Current Design</th>
-                <th>Virtual Dom</th>
-                <th>Decrease</th>
-            </tr>
-            <tr>
-                <td>Chrome</td>
-                <td>88ms</td>
-                <td>64ms</td>
-                <td>27%</td>
-            </tr>
-            <tr>
-                <td>Internet Explorer</td>
-                <td>673ms</td>
-                <td>382ms</td>
-                <td>43%</td>
-            </tr>
-            <tr>
-                <td>Firefox</td>
-                <td>101ms</td>
-                <td>69ms</td>
-                <td>31%</td>
-            </tr>
-        </table>
+        <b>Last Week</b>
     </p>
 
     <p>
-        So it made Internet Explorer almost half in time, but Chrome only 27% decrease. I was hoping it would make
-        it go 10x faster in every browser (given all the hype about REACT being a faster than fast option??).
-    </p>
-
-    <p>
-        Maybe I'm being a bit hard on myself. Twice as fast on IE is pretty good. But the virtual DOM
-        brought a whole new level of complexity into the design, and Internet Explorer is phasing out as
-        a browser anyway right? If I am to turn the grid engine inside out and make the grid more difficult to use,
-        it's gotta be for a reason greater than 27%.
-    </p>
-
-    <p>
-        <b>The plan??</b> Well I looked at the other grids (not ui-grid, I mean the other grids that I would take
-        inspiration from) and they all reuse DOM elements, ie when a row goes out of view, they don't rip
-        the row out of the DOM and create a new row for the new entry, they simply recycle the row, by
-        changing it's vertical position and updating it's details with the new data.
-    </p>
-
-    <p>
-        So that's what I'm in the middle of doing. I'm refactoring the design to allow for recycling of rows.
-        I'll then do my tests again and see if I can get the x10 speed increase I was looking for.
-    </p>
-
-    <!--
-        <p>
-            This is what I did last week:
-        </p>
-
         <ul>
             <li>
-                <b>TypeScript</b> - Now Angular Grid is written in TypeScript. See below for more info!!
+                Introduced minWidth and maxWidth for columns.
             </li>
-        </ul>
-        <p>
-            This is what I'm doing this week:
-        </p>
-
-        <ul>
             <li>
-                Tool Panel and TypeScript took a LOT of work. But it's all in now. Next up on my plate, Angular 2.0 and hoover
-                up a bunch of GitHub issues.
+                Chaining of cell expressions via getValue() method. Explained <a href="angular-grid-value-getters/index.php">here</a>.
+            </li>
+            <li>
+                Other minor bug fixes.
             </li>
         </ul>
-    -->
+    Release 1.12.4 contains all the above.
+    </p>
+
     <p>
-        I have no blockers. I also have no life.
+        <b>Next Week</b>
+    </p>
+    <p>
+        Next week I'll be continuing to work through the issues in Gibhub.
     </p>
 
     <a href="https://twitter.com/angularGrid" class="twitter-follow-button" data-show-count="false" data-size="large">Follow @angularGrid</a>
@@ -134,22 +73,6 @@ include 'documentation_header.php';
     </p>
 </span>
 </div>-->
-
-<div style="border: 1px solid darkgrey; background-color: #eee; padding: 10px; margin: 30px 5px 5px 5px;">
-
-    <p>
-        These made me smile!!! Thanks Oliver and Hichem! :)
-    </p>
-
-    <p>
-        <img src="images/twitter1.png"/>
-    </p>
-    <p>
-        <img src="images/twitter2.png"/>
-    </p>
-
-
-</div>
 
 <div style="text-align: center; margin-top: 50px;">
     <div style="border: 1px solid lightgrey; display: inline-block; padding-right: 10px;">
@@ -285,11 +208,22 @@ include 'documentation_header.php';
 
 </div>
 
+<div style="text-align: center">
+    <a href="http://angularconnect.com/"><img src="images/angularConnectBanner.png"/></a>
+</div>
+
+
 <div style="padding: 20px;">
 
     <h3>
         News
     </h3>
+
+    <hr/>
+
+    <p>
+        <b>18th July</b> Expressions implemented. Grid now works like Excel!!
+    </p>
 
     <hr/>
 

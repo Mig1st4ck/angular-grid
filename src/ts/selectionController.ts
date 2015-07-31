@@ -1,4 +1,5 @@
 /// <reference path="utils.ts" />
+/// <reference path="rendering/rowRenderer.ts" />
 
 module awk.grid {
 
@@ -18,7 +19,7 @@ module awk.grid {
         angularGrid: any;
         gridOptionsWrapper: any;
         $scope: any;
-        rowRenderer: any;
+        rowRenderer: RowRenderer;
         selectedRows: any;
         selectedNodesById: any;
         rowModel: any;
@@ -314,14 +315,14 @@ module awk.grid {
             this.updateGroupParentsIfNeeded();
         }
 
-// public (selectionRendererFactory & api)
-        selectIndex(index: any, tryMulti: any, suppressEvents: any) {
+        // public (selectionRendererFactory & api)
+        selectIndex(index: any, tryMulti: any, suppressEvents?: any) {
             var node = this.rowModel.getVirtualRow(index);
             this.selectNode(node, tryMulti, suppressEvents);
         }
 
-// private
-// updates the selectedRows with the selectedNodes and calls selectionChanged listener
+        // private
+        // updates the selectedRows with the selectedNodes and calls selectionChanged listener
         syncSelectedRowsAndCallListener(suppressEvents?: any) {
             // update selected rows
             var selectedRows = this.selectedRows;
@@ -336,7 +337,7 @@ module awk.grid {
                 }
             }
 
-            // this stope the event firing the very first the time grid is initialised. without this, the documentation
+            // this stop the event firing the very first the time grid is initialised. without this, the documentation
             // page had a popup in the 'selection' page as soon as the page was loaded!!
             var nothingChangedMustBeInitialising = oldCount === 0 && selectedRows.length === 0;
 

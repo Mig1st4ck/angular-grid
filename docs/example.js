@@ -59,6 +59,7 @@ gridsModule.controller('mainController', function($scope) {
     $scope.rowSelection = 'checkbox';
 
     var angularGrid = {
+        //rowsBuffer: 1,
         columnDefs: [],
         rowData: null,
         rowsAlreadyGrouped: false, // set this to true, if you are passing in data alrady in nodes and groups
@@ -113,6 +114,9 @@ gridsModule.controller('mainController', function($scope) {
             headerGroupOpened: '<i class="fa fa-minus-square-o"/>',
             headerGroupClosed: '<i class="fa fa-plus-square-o"/>'
         },
+
+        // isScrollLag: function() { return false; },
+        //suppressScrollLag: true,
 
         // callback when row clicked
         rowClicked: function(params) {
@@ -363,7 +367,10 @@ gridsModule.controller('mainController', function($scope) {
         var rowCount = parseInt($scope.rowCount);
         var colCount = parseInt($scope.colCount);
         var data = [];
-        for (var row = 0; row<rowCount; row++) {
+        for (var row = 1; row<=rowCount; row++) {
+            if (row%10000===0) {
+                console.log('created ' + row + ' rows');
+            }
             var rowItem = {};
 
             //create data for the known columns
@@ -597,18 +604,16 @@ function ratingRenderer(params) {
 }
 
 function ratingRendererGeneral(value, forFilter)  {
-    var eContainer = document.createElement("span");
+    var result = '<span>';
     for (var i = 0; i<5; i++) {
         if (value>i) {
-            var starImage = document.createElement("img");
-            starImage.src = "images/goldStar.png";
-            eContainer.appendChild(starImage);
+            result += '<img src="images/goldStar.png"/>';
         }
     }
     if (forFilter && value === 0) {
-        eContainer.appendChild(document.createTextNode('(no stars)'));
+        result += '(no stars)';
     }
-    return eContainer;
+    return result;
 }
 
 function currencyRenderer(params)  {

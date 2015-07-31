@@ -13,12 +13,14 @@ module awk.grid {
 
     export class ValuesSelectionPanel {
 
-        gridOptionsWrapper: any;
-        columnController: any;
-        cColumnList: any;
-        layout: any;
+        private gridOptionsWrapper: any;
+        private columnController: any;
+        private cColumnList: any;
+        private layout: any;
+        private popupService: PopupService;
 
-        constructor(columnController: any, gridOptionsWrapper: any) {
+        constructor(columnController: any, gridOptionsWrapper: any, popupService: PopupService) {
+            this.popupService = popupService;
             this.gridOptionsWrapper = gridOptionsWrapper;
             this.setupComponents();
             this.columnController = columnController;
@@ -29,15 +31,19 @@ module awk.grid {
             });
         }
 
-        columnsChanged(newColumns: any, newGroupedColumns: any, newValuesColumns: any) {
-            this.cColumnList.setModel(newValuesColumns);
+        public getLayout() {
+            return this.layout;
         }
 
-        addDragSource(dragSource: any) {
+        private columnsChanged(allColumns: Column[], pivotColumns: Column[], valueColumns: Column[]) {
+            this.cColumnList.setModel(valueColumns);
+        }
+
+        public addDragSource(dragSource: any) {
             this.cColumnList.addDragSource(dragSource);
         }
 
-        cellRenderer(params: any) {
+        private cellRenderer(params: any) {
             var column = params.value;
             var colDisplayName = this.columnController.getDisplayNameForCol(column);
 
@@ -49,20 +55,16 @@ module awk.grid {
 
             var that = this;
             eRemove.addEventListener('click', function () {
-                var model = that.cColumnList.getModel();
-                model.splice(model.indexOf(column), 1);
-                that.cColumnList.setModel(model);
-                that.onValuesChanged();
+                that.columnController.removeValueColumn(column);
             });
 
-            var agValueType = new AgDropdownList();
+            var agValueType = new AgDropdownList(this.popupService);
             agValueType.setModel([constants.SUM, constants.MIN, constants.MAX]);
             agValueType.setSelected(column.aggFunc);
             agValueType.setWidth(45);
 
             agValueType.addItemSelectedListener(function (item: any) {
-                column.aggFunc = item;
-                that.onValuesChanged();
+                that.columnController.setColumnAggFunction(column, item);
             });
 
             eResult.appendChild(agValueType.getGui());
@@ -75,17 +77,17 @@ module awk.grid {
             return eResult;
         }
 
-        setupComponents() {
+        private setupComponents() {
             var localeTextFunc = this.gridOptionsWrapper.getLocaleTextFunc();
             var columnsLocalText = localeTextFunc('valueColumns', 'Value Columns');
             var emptyMessage = localeTextFunc('valueColumnsEmptyMessage', 'Drag columns from above to create values');
 
             this.cColumnList = new AgList();
             this.cColumnList.setCellRenderer(this.cellRenderer.bind(this));
-            this.cColumnList.addModelChangedListener(this.onValuesChanged.bind(this));
             this.cColumnList.setEmptyMessage(emptyMessage);
             this.cColumnList.addStyles({height: '100%', overflow: 'auto'});
             this.cColumnList.addBeforeDropListener(this.beforeDropListener.bind(this));
+            this.cColumnList.setReadOnly(true);
 
             var eNorthPanel = document.createElement('div');
             eNorthPanel.style.paddingTop = '10px';
@@ -97,15 +99,8 @@ module awk.grid {
             });
         }
 
-        beforeDropListener(newItem: any) {
-            if (!newItem.aggFunc) {
-                newItem.aggFunc = constants.SUM;
-            }
-        }
-
-        onValuesChanged() {
-            var api = this.gridOptionsWrapper.getApi();
-            api.recomputeAggregates();
+        private beforeDropListener(newItem: any) {
+            this.columnController.addValueColumn(newItem);
         }
     }
 }

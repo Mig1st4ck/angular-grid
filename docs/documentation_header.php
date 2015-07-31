@@ -5,6 +5,7 @@
     <title><?php echo $pageTitle; ?></title>
     <meta name="description" content="<?php echo $pageDescription; ?>">
     <meta name="keywords" content="<?php echo $pageKeyboards; ?>"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
@@ -36,33 +37,28 @@
 
 <body ng-app="documentation">
 
-    <nav class="navbar navbar-inverse navbar-fixed-top">
+    <nav class="navbar-inverse">
         <div class="container">
-            <div class="navbar-header top-header big-text">
-                <a class="top-button" href="/index.html"> <i class="fa fa-home"></i> Home</a>
-                <a class="top-button" href="/example.html"> <i class="fa fa-bicycle"></i> Test Drive</a>
-                <a class="top-button-selected" href="/documentation.php"> <i class="fa fa-book"></i> Documentation</a>
-                <a class="top-button" href="/why-the-world-needed-another-angularjs-grid/"> <i class="fa fa-road"></i> Story</a>
-                <a class="top-button" href="/forum"> <i class="fa fa-users"></i> Forum</a>
+            <div class="row">
+                <div class="col-md-12 top-header big-text">
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/index.html"> <i class="fa fa-home"></i> Home</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/example.html"> <i class="fa fa-bicycle"></i> Test Drive</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button-selected" href="/documentation.php">  <i class="fa fa-book"></i> Documentation</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/why-the-world-needed-another-angularjs-grid/"> <i class="fa fa-road"></i> Story</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/forum"> <i class="fa fa-users"></i> Forum</a>
+                        </span>
+                </div>
             </div>
-            <div style="float:right;" class="navbar-header top-header">
 
-                <a class='share-link' href="https://www.facebook.com/sharer/sharer.php?u=www.angulargrid.com">
-                    <img src="/images/facebook_32.png" alt="Share on Facebook" title="Share on Facebook"/>
-                </a>
-
-                <a class='share-link' href="https://twitter.com/home?status=Check%20out%20AngularGrid,%20a%20new%20way%20to%20show%20grid%20data%20for%20AngularJS">
-                    <img src="/images/twitter_32.png" alt="Share on Twitter" title="Share on Twitter"/>
-                </a>
-
-                <a class='share-link' href="https://plus.google.com/share?url=www.angulargrid.com">
-                    <img src="/images/googleplus_32.png" alt="Share on Google Plus" title="Share on Google Plus"/>
-                </a>
-
-                <a class='share-link' href="https://www.linkedin.com/shareArticle?mini=true&url=www.angulargrid.com&title=Angular%20Grid&summary=A%20new%20way%20to%20show%20grid%20data%20for%20AngularJS&source=">
-                    <img src="/images/linkedin_32.png" alt="Share on LinkedIn" title="Share on LinkedIn"/>
-                </a>
-            </div>
         </div>
     </nav>
 
@@ -147,6 +143,12 @@
                     <span class="sidebarLinkSelected">Value Getters</span>
                 <?php } else { ?>
                     <a class="sidebarLink" href="/angular-grid-value-getters/index.php">Value Getters</a>
+                <?php } ?>
+
+                <?php if ($key == "Cell Expressions") { ?>
+                    <span class="sidebarLinkSelected">Cell Expressions</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/angular-grid-cell-expressions/index.php">Cell Expressions</a>
                 <?php } ?>
 
                 <?php if ($key == "Cell Styling") { ?>

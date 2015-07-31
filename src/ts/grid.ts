@@ -5,8 +5,8 @@
 /// <reference path="columnController.ts" />
 /// <reference path="selectionController.ts" />
 /// <reference path="selectionRendererFactory.ts" />
-/// <reference path="rowRenderer.ts" />
-/// <reference path="headerRenderer.ts" />
+/// <reference path="rendering/rowRenderer.ts" />
+/// <reference path="rendering/headerRenderer.ts" />
 /// <reference path="rowControllers/inMemoryRowController.ts" />
 /// <reference path="rowControllers/virtualPageRowController.ts" />
 /// <reference path="rowControllers/paginationController.ts" />
@@ -15,16 +15,15 @@
 /// <reference path="gridPanel/gridPanel.ts" />
 /// <reference path="toolPanel/toolPanel.ts" />
 /// <reference path="widgets/agPopupService.ts" />
-/// <reference path="gridOptions.ts" />
+/// <reference path="entities/gridOptions.ts" />
 /// <reference path="gridApi.ts" />
+/// <reference path="valueService.ts" />
 
 module awk.grid {
 
-    var agPopupService = PopupService.getInstance();
-
     export class Grid {
 
-        private virtualRowCallbacks: any;
+        private virtualRowCallbacks = <any>{};
         private gridOptions: GridOptions;
         private gridOptionsWrapper: GridOptionsWrapper;
         private quickFilter: string;
@@ -46,7 +45,6 @@ module awk.grid {
         private doingPagination: boolean;
 
         // these are public, as they are used by the api
-        columnModel: any;
         rowModel: any;
 
         constructor(eGridDiv: any, gridOptions: any, $scope: any, $compile: any, quickFilterOnScope: any) {
@@ -69,18 +67,13 @@ module awk.grid {
                 });
             }
 
-            this.virtualRowCallbacks = {};
-
-            // done when cols change
-            this.setupColumns();
-
-            this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getAllRows());
-
             var forPrint = this.gridOptionsWrapper.isDontUseScrolls();
             if (!forPrint) {
                 window.addEventListener('resize', this.doLayout.bind(this));
             }
 
+            this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getAllRows());
+            this.setupColumns();
             this.updateModelAndRefresh(Constants.STEP_EVERYTHING);
 
             // if no data provided initially, and not doing infinite scrolling, show the loading panel
@@ -117,7 +110,6 @@ module awk.grid {
 
             // make local references, to make the below more human readable
             var gridOptionsWrapper = this.gridOptionsWrapper;
-            var gridOptions = this.gridOptions;
             var forPrint = gridOptionsWrapper.isDontUseScrolls();
 
             // create all the beans
@@ -132,29 +124,34 @@ module awk.grid {
             var expressionService = new ExpressionService();
             var templateService = new TemplateService();
             var gridPanel = new GridPanel(gridOptionsWrapper);
-
-            var columnModel = columnController.getModel();
+            var popupService = new PopupService();
+            var valueService = new ValueService();
+            var groupCreator = new GroupCreator();
 
             // initialise all the beans
             templateService.init($scope);
             selectionController.init(this, gridPanel, gridOptionsWrapper, $scope, rowRenderer);
-            filterManager.init(this, gridOptionsWrapper, $compile, $scope, expressionService, columnModel);
+            filterManager.init(this, gridOptionsWrapper, $compile, $scope,
+                columnController, popupService, valueService);
             selectionRendererFactory.init(this, selectionController);
-            columnController.init(this, selectionRendererFactory, gridOptionsWrapper, expressionService);
-            rowRenderer.init(columnModel, gridOptionsWrapper, gridPanel, this,
-                selectionRendererFactory, $compile, $scope, selectionController, expressionService, templateService);
-            headerRenderer.init(gridOptionsWrapper, columnController, columnModel, gridPanel, this, filterManager,
-                $scope, $compile, expressionService);
-            inMemoryRowController.init(gridOptionsWrapper, columnModel, this, filterManager, $scope, expressionService);
+            columnController.init(this, selectionRendererFactory, gridOptionsWrapper, expressionService, valueService);
+            rowRenderer.init(columnController, gridOptionsWrapper, gridPanel, this, selectionRendererFactory, $compile,
+                $scope, selectionController, expressionService, templateService, valueService);
+            headerRenderer.init(gridOptionsWrapper, columnController, gridPanel, this, filterManager,
+                $scope, $compile);
+            inMemoryRowController.init(gridOptionsWrapper, columnController, this, filterManager, $scope,
+                groupCreator, valueService);
             virtualPageRowController.init(rowRenderer, gridOptionsWrapper, this);
-            gridPanel.init(columnModel, rowRenderer);
+            gridPanel.init(columnController, rowRenderer);
+            valueService.init(gridOptionsWrapper, expressionService, columnController);
+            groupCreator.init(valueService);
 
             var toolPanelLayout: any = null;
             var toolPanel: any = null;
             if (!forPrint) {
                 toolPanel = new ToolPanel();
                 toolPanelLayout = toolPanel.layout;
-                toolPanel.init(columnController, inMemoryRowController, gridOptionsWrapper);
+                toolPanel.init(columnController, inMemoryRowController, gridOptionsWrapper, popupService);
             }
 
             // this is a child bean, get a reference and pass it on
@@ -177,7 +174,6 @@ module awk.grid {
             this.rowModel = rowModel;
             this.selectionController = selectionController;
             this.columnController = columnController;
-            this.columnModel = columnModel;
             this.inMemoryRowController = inMemoryRowController;
             this.virtualPageRowController = virtualPageRowController;
             this.rowRenderer = rowRenderer;
@@ -194,7 +190,7 @@ module awk.grid {
                 dontFill: forPrint,
                 name: 'eRootPanel'
             });
-            agPopupService.init(this.eRootPanel.getGui());
+            popupService.init(this.eRootPanel.getGui());
 
             // default is we don't show paging panel, this is set to true when datasource is set
             this.eRootPanel.setSouthVisible(false);
@@ -203,6 +199,19 @@ module awk.grid {
             this.showToolPanel(gridOptionsWrapper.isShowToolPanel());
 
             eUserProvidedDiv.appendChild(this.eRootPanel.getGui());
+
+            var that = this;
+            columnController.addListener({
+                valuesChanged: function() {
+                    that.inMemoryRowController.doAggregate();
+                },
+                pivotChanged: function() {
+                    that.inMemoryRowController.onPivotChanged();
+                },
+                columnsChanged: function() {
+                    that.refreshHeaderAndBody();
+                }
+            });
         }
 
         showToolPanel(show: any) {
@@ -375,12 +384,6 @@ module awk.grid {
             this.gridPanel.setHeaderHeight();
             this.columnController.setColumns(this.gridOptionsWrapper.getColumnDefs());
             this.gridPanel.showPinnedColContainersIfNeeded();
-            this.headerRenderer.refreshHeader();
-            if (!this.gridOptionsWrapper.isDontUseScrolls()) {
-                this.gridPanel.setPinnedColContainerWidth();
-                this.gridPanel.setBodyContainerWidth();
-            }
-            this.headerRenderer.updateFilterIcons();
         }
 
         // rowsToRefresh is at what index to start refreshing the rows. the assumption is
@@ -447,7 +450,7 @@ module awk.grid {
         }
 
         getSortModel() {
-            var allColumns = this.columnModel.getAllColumns();
+            var allColumns = this.columnController.getAllColumns();
             var columnsWithSorting = <any>[];
             var i: any;
             for (i = 0; i < allColumns.length; i++) {
@@ -478,7 +481,7 @@ module awk.grid {
             }
             // first up, clear any previous sort
             var sortModelProvided = sortModel !== null && sortModel !== undefined && sortModel.length > 0;
-            var allColumns = this.columnModel.getAllColumns();
+            var allColumns = this.columnController.getAllColumns();
             for (var i = 0; i < allColumns.length; i++) {
                 var column = allColumns[i];
 
@@ -542,6 +545,7 @@ module awk.grid {
                     }
                 });
             }
+            this.rowRenderer.onRowSelected(rowIndex, selected);
         }
 
         onVirtualRowRemoved(rowIndex: any) {
@@ -560,6 +564,8 @@ module awk.grid {
         onNewCols() {
             this.setupColumns();
             this.updateModelAndRefresh(Constants.STEP_EVERYTHING);
+            // found that adding pinned column can upset the layout
+            this.doLayout();
         }
 
         updateBodyContainerWidthAfterColResize() {

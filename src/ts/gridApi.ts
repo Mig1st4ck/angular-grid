@@ -1,6 +1,6 @@
 /// <reference path="grid.ts" />
-/// <reference path="rowRenderer.ts" />
-/// <reference path="headerRenderer.ts" />
+/// <reference path="rendering/rowRenderer.ts" />
+/// <reference path="rendering/headerRenderer.ts" />
 
 module awk.grid {
 
@@ -167,12 +167,12 @@ module awk.grid {
         }
 
         getFilterApi(key:any) {
-            var column = this.grid.columnModel.getColumn(key);
+            var column = this.columnController.getColumn(key);
             return this.filterManager.getFilterApi(column);
         }
 
         getColumnDef(key:any) {
-            var column = this.grid.columnModel.getColumn(key);
+            var column = this.columnController.getColumn(key);
             if (column) {
                 return column.colDef;
             } else {
@@ -230,9 +230,6 @@ module awk.grid {
 
         setColumnState(state:any) {
             this.columnController.setState(state);
-            this.inMemoryRowController.doGrouping();
-            this.inMemoryRowController.updateModel(Constants.STEP_EVERYTHING);
-            this.grid.refreshHeaderAndBody();
         }
 
         doLayout() {

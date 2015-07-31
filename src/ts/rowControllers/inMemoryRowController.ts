@@ -5,39 +5,41 @@
 
 module awk.grid {
 
-    var utils = Utils;
+    var _ = Utils;
     var constants = Constants;
-    var groupCreator = GroupCreator.getInstance();
     var expandCreator = ExpandCreator.getInstance();
 
     export class InMemoryRowController {
 
-        gridOptionsWrapper: any;
-        columnModel: any;
-        angularGrid: any;
-        filterManager: any;
-        $scope: any;
-        expressionService: any;
+        private gridOptionsWrapper: any;
+        private columnController: ColumnController;
+        private angularGrid: any;
+        private filterManager: any;
+        private $scope: any;
 
-        allRows: any;
-        rowsAfterGroup: any;
-        rowsAfterFilter: any;
-        rowsAfterSort: any;
-        rowsAfterMap: any;
-        model: any;
+        private allRows: any;
+        private rowsAfterGroup: any;
+        private rowsAfterFilter: any;
+        private rowsAfterSort: any;
+        private rowsAfterMap: any;
+        private model: any;
+
+        private groupCreator: GroupCreator;
+        private valueService: ValueService;
 
         constructor() {
             this.createModel();
         }
 
-        init(gridOptionsWrapper: any, columnModel: any, angularGrid: any, filterManager: any,
-             $scope: any, expressionService: any) {
+        init(gridOptionsWrapper: any, columnController: ColumnController, angularGrid: any, filterManager: any,
+             $scope: any, groupCreator: GroupCreator, valueService: ValueService) {
             this.gridOptionsWrapper = gridOptionsWrapper;
-            this.columnModel = columnModel;
+            this.columnController = columnController;
             this.angularGrid = angularGrid;
             this.filterManager = filterManager;
             this.$scope = $scope;
-            this.expressionService = expressionService;
+            this.groupCreator = groupCreator;
+            this.valueService = valueService;
 
             this.allRows = null;
             this.rowsAfterGroup = null;
@@ -86,8 +88,8 @@ module awk.grid {
                     for (var i = 0; i < list.length; i++) {
                         var item = list[i];
                         callback(item);
-                        if (item.group && item.group.children) {
-                            doCallback(item.group.children);
+                        if (item.group && item.children) {
+                            doCallback(item.children);
                         }
                     }
                 }
@@ -184,27 +186,20 @@ module awk.grid {
             }
         }
 
-        // private
-        getValue(data: any, colDef: any, node: any) {
-            var api = this.gridOptionsWrapper.getApi();
-            var context = this.gridOptionsWrapper.getContext();
-            return utils.getValue(this.expressionService, data, colDef, node, api, context);
-        }
-
         // public - it's possible to recompute the aggregate without doing the other parts
-        doAggregate() {
+        public doAggregate() {
 
             var groupAggFunction = this.gridOptionsWrapper.getGroupAggFunction();
             if (typeof groupAggFunction === 'function') {
-                this.recursivelyCreateAggData(this.rowsAfterFilter, groupAggFunction);
+                this.recursivelyCreateAggData(this.rowsAfterFilter, groupAggFunction, 0);
                 return;
             }
 
-            var valueColumns = this.columnModel.getValueColumns();
+            var valueColumns = this.columnController.getValueColumns();
             var valueKeys = this.gridOptionsWrapper.getGroupAggFields();
             if ((valueColumns && valueColumns.length > 0) || (valueKeys && valueKeys.length > 0)) {
                 var defaultAggFunction = this.defaultGroupAggFunctionFactory(valueColumns, valueKeys);
-                this.recursivelyCreateAggData(this.rowsAfterFilter, defaultAggFunction);
+                this.recursivelyCreateAggData(this.rowsAfterFilter, defaultAggFunction, 0);
             } else {
                 // if no agg data, need to clear out any previous items, when can be left behind
                 // if use is creating / removing columns using the tool panel.
@@ -249,14 +244,14 @@ module awk.grid {
         }
 
         // private
-        recursivelyCreateAggData(nodes: any, groupAggFunction: any) {
+        recursivelyCreateAggData(nodes: any, groupAggFunction: any, level: number) {
             for (var i = 0, l = nodes.length; i < l; i++) {
                 var node = nodes[i];
                 if (node.group) {
                     // agg function needs to start at the bottom, so traverse first
-                    this.recursivelyCreateAggData(node.childrenAfterFilter, groupAggFunction);
+                    this.recursivelyCreateAggData(node.childrenAfterFilter, groupAggFunction, level++);
                     // after traversal, we can now do the agg at this level
-                    var data = groupAggFunction(node.childrenAfterFilter);
+                    var data = groupAggFunction(node.childrenAfterFilter, level);
                     node.data = data;
                     // if we are grouping, then it's possible there is a sibling footer
                     // to the group, so update the data here also if there is one
@@ -277,13 +272,13 @@ module awk.grid {
             } else {
                 //see if there is a col we are sorting by
                 var sortingOptions = <any>[];
-                this.columnModel.getAllColumns().forEach(function (column: any) {
+                this.columnController.getAllColumns().forEach(function (column: any) {
                     if (column.sort) {
                         var ascending = column.sort === constants.ASC;
                         sortingOptions.push({
                             inverter: ascending ? 1 : -1,
                             sortedAt: column.sortedAt,
-                            colDef: column.colDef
+                            column: column
                         });
                     }
                 });
@@ -312,7 +307,7 @@ module awk.grid {
         }
 
         // private
-        recursivelyResetSort(rowNodes: any) {
+        recursivelyResetSort(rowNodes: any[]) {
             if (!rowNodes) {
                 return;
             }
@@ -323,10 +318,11 @@ module awk.grid {
                     this.recursivelyResetSort(item.children);
                 }
             }
+
+            this.updateChildIndexes(rowNodes);
         }
 
-        // private
-        sortList(nodes: any, sortOptions: any) {
+        private sortList(nodes: any, sortOptions: any) {
 
             // sort any groups recursively
             for (var i = 0, l = nodes.length; i < l; i++) { // critical section, no functional programming
@@ -339,23 +335,23 @@ module awk.grid {
 
             var that = this;
 
-            function compare(objA: any, objB: any, colDef: any) {
-                var valueA = that.getValue(objA.data, colDef, objA);
-                var valueB = that.getValue(objB.data, colDef, objB);
-                if (colDef.comparator) {
+            function compare(objA:any, objB:any, column:Column, isInverted:any) {
+                var valueA = that.valueService.getValue(column, objA.data, objA);
+                var valueB = that.valueService.getValue(column, objB.data, objB);
+                if (column.colDef.comparator) {
                     //if comparator provided, use it
-                    return colDef.comparator(valueA, valueB, objA, objB);
+                    return column.colDef.comparator(valueA, valueB, objA, objB, isInverted);
                 } else {
                     //otherwise do our own comparison
-                    return utils.defaultComparator(valueA, valueB);
+                    return _.defaultComparator(valueA, valueB);
                 }
             }
 
-            nodes.sort(function (objA: any, objB: any) {
+            nodes.sort(function (objA:any, objB:any) {
                 // Iterate columns, return the first that doesn't match
                 for (var i = 0, len = sortOptions.length; i < len; i++) {
                     var sortOption = sortOptions[i];
-                    var compared = compare(objA, objB, sortOption.colDef);
+                    var compared = compare(objA, objB, sortOption.column, sortOption.inverter === -1);
                     if (compared !== 0) {
                         return compared * sortOption.inverter;
                     }
@@ -363,22 +359,35 @@ module awk.grid {
                 // All matched, these are identical as far as the sort is concerned:
                 return 0;
             });
+
+            this.updateChildIndexes(nodes);
         }
 
-        // private
-        doGrouping() {
+        private updateChildIndexes(nodes: any[]) {
+            for (var j = 0; j<nodes.length; j++) {
+                var node = nodes[j];
+                node.firstChild = j === 0;
+                node.lastChild = j === nodes.length - 1;
+                node.childIndex = j;
+            }
+        }
+
+        // called by grid when pivot cols change
+        public onPivotChanged(): void {
+            this.doPivoting();
+            this.updateModel(constants.STEP_EVERYTHING);
+        }
+
+        private doPivoting() {
             var rowsAfterGroup: any;
-            var groupedCols = this.columnModel.getGroupedColumns();
+            var groupedCols = this.columnController.getGroupedColumns();
             var rowsAlreadyGrouped = this.gridOptionsWrapper.isRowsAlreadyGrouped();
 
             var doingGrouping = !rowsAlreadyGrouped && groupedCols.length > 0;
 
             if (doingGrouping) {
-                var expandByDefault = this.gridOptionsWrapper.getGroupDefaultExpanded();
-                var api = this.gridOptionsWrapper.getApi();
-                var context = this.gridOptionsWrapper.getContext();
-                rowsAfterGroup = groupCreator.group(this.allRows, groupedCols, expandByDefault,
-                    this.expressionService, api, context);
+                var expandByDefault = this.gridOptionsWrapper.isGroupSuppressRow() || this.gridOptionsWrapper.getGroupDefaultExpanded();
+                rowsAfterGroup = this.groupCreator.group(this.allRows, groupedCols, expandByDefault);
             } else {
                 rowsAfterGroup = this.allRows;
             }
@@ -475,7 +484,7 @@ module awk.grid {
         // private
         // rows: the rows to put into the model
         // firstId: the first id to use, used for paging, where we are not on the first page
-        setAllRows(rows: any, firstId?: any) {
+        public setAllRows(rows: any, firstId?: any) {
             var nodes: any;
             if (this.gridOptionsWrapper.isRowsAlreadyGrouped()) {
                 nodes = rows;
@@ -497,8 +506,10 @@ module awk.grid {
             this.recursivelyAddIdToNodes(nodes, firstIdToUse);
             this.allRows = nodes;
 
-            // aggregate here, so filters have the agg data ready
-            this.doGrouping();
+            // pivot here, so filters have the agg data ready
+            if (this.columnController.isSetupComplete()) {
+                this.doPivoting();
+            }
             // process here the expanded
             this.doExpanding();
         }
@@ -565,9 +576,12 @@ module awk.grid {
             if (!originalNodes) {
                 return;
             }
+            var groupSuppressRow = this.gridOptionsWrapper.isGroupSuppressRow();
             for (var i = 0; i < originalNodes.length; i++) {
                 var node = originalNodes[i];
-                mappedData.push(node);
+                if(!groupSuppressRow || (groupSuppressRow && !node.group)) {
+                    mappedData.push(node);
+                }
                 if (node.group && node.expanded) {
                     this.addToMap(mappedData, node.childrenAfterSort);
 
@@ -623,9 +637,9 @@ module awk.grid {
         aggregateRowForQuickFilter(node: any) {
             var aggregatedText = '';
             var that = this;
-            this.columnModel.getAllColumns().forEach(function (colDefWrapper: any) {
+            this.columnController.getAllColumns().forEach(function (column: Column) {
                 var data = node.data;
-                var value = that.getValue(data,  colDefWrapper.colDef, node);
+                var value = that.valueService.getValue(column, data, node);
                 if (value && value !== '') {
                     aggregatedText = aggregatedText + value.toString().toUpperCase() + "_";
                 }

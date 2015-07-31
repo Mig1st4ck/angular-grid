@@ -1,9 +1,11 @@
-<html>
+<!DOCTYPE html>
+<html style="height: 100%;">
 
     <head>
         <title>Angular Grid Example</title>
         <meta name="description" content="AngularJS Grid Example">
         <meta name="keywords" content="angular angularjs grid table example"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
         <!-- Bootstrap -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
@@ -19,9 +21,9 @@
 
         <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.8/angular.min.js"></script>
 
-        <script src="./dist/angular-grid.js"></script>
-        <link rel="stylesheet" type="text/css" href="./dist/angular-grid.css">
-        <link rel="stylesheet" type="text/css" href="./dist/theme-fresh.css">
+        <script src="./dist/angular-grid.js?ignore=notused2"></script>
+        <link rel="stylesheet" type="text/css" href="./dist/angular-grid.css?ignore=notused2">
+        <link rel="stylesheet" type="text/css" href="./dist/theme-fresh.css?ignore=notused2">
         <link rel="stylesheet" type="text/css" href="./dist/theme-dark.css">
 
         <script src="example.js"></script>
@@ -53,14 +55,26 @@
 
         <div style="position: absolute; top: 55px; left: 0px; padding: 0px 20px 20px 20px;">
 
-            <nav class="navbar navbar-inverse navbar-fixed-top">
+            <nav class="navbar-inverse navbar-fixed-top">
                 <div class="container">
-                    <div class="navbar-header top-header big-text">
-                        <a class="top-button" href="/index.html"> <i class="fa fa-home"></i> Home</a>
-                        <a class="top-button-selected" href="/example.html"> <i class="fa fa-bicycle"></i> Test Drive</a>
-                        <a class="top-button" href="/documentation.php"> <i class="fa fa-book"></i> Documentation</a>
-                        <a class="top-button" href="/why-the-world-needed-another-angularjs-grid/"> <i class="fa fa-road"></i> Story</a>
-                        <a class="top-button" href="/forum"> <i class="fa fa-users"></i> Forum</a>
+                    <div class="row">
+                        <div class="col-md-12 top-header big-text">
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/index.html"> <i class="fa fa-home"></i> Home</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button-selected" href="/example.html"> <i class="fa fa-bicycle"></i> Test Drive</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/documentation.php">  <i class="fa fa-book"></i> Documentation</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/why-the-world-needed-another-angularjs-grid/"> <i class="fa fa-road"></i> Story</a>
+                        </span>
+                        <span class="top-button-wrapper">
+                            <a class="top-button" href="/forum"> <i class="fa fa-users"></i> Forum</a>
+                        </span>
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -173,7 +187,7 @@
         </div>
         <!-- The table div -->
         <div style="padding: 150px 20px 20px 20px; height: 100%; box-sizing: border-box;">
-            <div ag-grid="angularGrid" ng-style="{width: width, height: height}" ng-class="style"></div>
+            <div ag-grid="angularGrid" style="height: 100%;" ng-style="{width: width, height: height}" ng-class="style"></div>
         </div>
     </body>
 

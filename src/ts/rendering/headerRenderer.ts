@@ -1,6 +1,6 @@
-/// <reference path="utils.ts" />
-/// <reference path="constants.ts" />
-/// <reference path="svgFactory.ts" />
+/// <reference path="../utils.ts" />
+/// <reference path="../constants.ts" />
+/// <reference path="../svgFactory.ts" />
 
 module awk.grid {
 
@@ -10,26 +10,21 @@ module awk.grid {
 
     export class HeaderRenderer {
 
-        expressionService: any;
-        gridOptionsWrapper: any;
-        columnModel: any;
-        columnController: any;
-        angularGrid: any;
-        filterManager: any;
-        $scope: any;
-        $compile: any;
-        ePinnedHeader: any;
-        eHeaderContainer: any;
-        eHeader: any;
-        eRoot: any;
-        childScopes: any;
-        dragStartX: any;
+        private gridOptionsWrapper: GridOptionsWrapper;
+        private columnController: ColumnController;
+        private angularGrid: Grid;
+        private filterManager: FilterManager;
+        private $scope: any;
+        private $compile: any;
+        private ePinnedHeader: HTMLElement;
+        private eHeaderContainer: HTMLElement;
+        private eRoot: HTMLElement;
+        private childScopes: any[];
+        private dragStartX: number;
 
-        init(gridOptionsWrapper: any, columnController: any, columnModel: any, gridPanel: any, angularGrid: any,
-             filterManager: any, $scope: any, $compile: any, expressionService: any) {
-            this.expressionService = expressionService;
+        public init(gridOptionsWrapper: GridOptionsWrapper, columnController: ColumnController, gridPanel: GridPanel,
+                    angularGrid: Grid, filterManager: FilterManager, $scope: any, $compile: any) {
             this.gridOptionsWrapper = gridOptionsWrapper;
-            this.columnModel = columnModel;
             this.columnController = columnController;
             this.angularGrid = angularGrid;
             this.filterManager = filterManager;
@@ -38,14 +33,13 @@ module awk.grid {
             this.findAllElements(gridPanel);
         }
 
-        findAllElements(gridPanel: any) {
+        private findAllElements(gridPanel: any) {
             this.ePinnedHeader = gridPanel.getPinnedHeader();
             this.eHeaderContainer = gridPanel.getHeaderContainer();
-            this.eHeader = gridPanel.getHeader();
             this.eRoot = gridPanel.getRoot();
         }
 
-        refreshHeader() {
+        public refreshHeader() {
             utils.removeAllChildren(this.ePinnedHeader);
             utils.removeAllChildren(this.eHeaderContainer);
 
@@ -63,17 +57,17 @@ module awk.grid {
             }
         }
 
-        insertHeadersWithGrouping() {
-            var groups = this.columnModel.getHeaderGroups();
+        private insertHeadersWithGrouping() {
+            var groups: ColumnGroup[] = this.columnController.getHeaderGroups();
             var that = this;
-            groups.forEach(function (group: any) {
+            groups.forEach(function (group: ColumnGroup) {
                 var eHeaderCell = that.createGroupedHeaderCell(group);
                 var eContainerToAddTo = group.pinned ? that.ePinnedHeader : that.eHeaderContainer;
                 eContainerToAddTo.appendChild(eHeaderCell);
             });
         }
 
-        createGroupedHeaderCell(group: any) {
+        private createGroupedHeaderCell(group: ColumnGroup) {
 
             var eHeaderGroup = document.createElement('div');
             eHeaderGroup.className = 'ag-header-group';
@@ -96,7 +90,7 @@ module awk.grid {
                 eHeaderGroupCell.appendChild(eHeaderCellResize);
                 group.eHeaderCellResize = eHeaderCellResize;
                 var dragCallback = this.groupDragCallbackFactory(group);
-                this.addDragHandler(eHeaderCellResize, dragCallback);
+                this.addDragHandler(eHeaderCellResize, dragCallback, null, group);
             }
 
             // no renderer, default text render
@@ -118,7 +112,7 @@ module awk.grid {
             eHeaderGroup.appendChild(eHeaderGroupCell);
 
             var that = this;
-            group.displayedColumns.forEach(function (column: any) {
+            group.displayedColumns.forEach(function (column: Column) {
                 var eHeaderCell = that.createHeaderCell(column, true, group);
                 eHeaderGroup.appendChild(eHeaderCell);
             });
@@ -128,7 +122,13 @@ module awk.grid {
             return eHeaderGroup;
         }
 
-        addGroupExpandIcon(group: any, eHeaderGroup: any, expanded: any) {
+        private fireColumnResized(column: any) {
+            if (typeof this.gridOptionsWrapper.getColumnResized() === 'function') {
+                this.gridOptionsWrapper.getColumnResized()(column);
+            }
+        }
+
+        private addGroupExpandIcon(group: any, eHeaderGroup: any, expanded: any) {
             var eGroupIcon: any;
             if (expanded) {
                 eGroupIcon = utils.createIcon('headerGroupOpened', this.gridOptionsWrapper, null, svgFactory.createArrowLeftSvg);
@@ -144,7 +144,7 @@ module awk.grid {
             };
         }
 
-        addDragHandler(eDraggableElement: any, dragCallback: any) {
+        private addDragHandler(eDraggableElement: any, dragCallback: any, column: Column, headerGroup: ColumnGroup) {
             var that = this;
             eDraggableElement.addEventListener('mousedown', function (downEvent: any) {
                 dragCallback.onDragStart();
@@ -160,11 +160,11 @@ module awk.grid {
                 };
 
                 listenersToRemove.mouseup = function () {
-                    that.stopDragging(listenersToRemove);
+                    that.stopDragging(listenersToRemove, column, headerGroup);
                 };
 
                 listenersToRemove.mouseleave = function () {
-                    that.stopDragging(listenersToRemove);
+                    that.stopDragging(listenersToRemove, column, headerGroup);
                 };
 
                 that.eRoot.addEventListener('mousemove', listenersToRemove.mousemove);
@@ -173,7 +173,7 @@ module awk.grid {
             });
         }
 
-        setWidthOfGroupHeaderCell(headerGroup: any) {
+        private setWidthOfGroupHeaderCell(headerGroup: any) {
             var totalWidth = 0;
             headerGroup.displayedColumns.forEach(function (column: any) {
                 totalWidth += column.actualWidth;
@@ -182,12 +182,12 @@ module awk.grid {
             headerGroup.actualWidth = totalWidth;
         }
 
-        insertHeadersWithoutGrouping() {
+        private insertHeadersWithoutGrouping() {
             var ePinnedHeader = this.ePinnedHeader;
             var eHeaderContainer = this.eHeaderContainer;
             var that = this;
 
-            this.columnModel.getDisplayedColumns().forEach(function (column: any) {
+            this.columnController.getDisplayedColumns().forEach(function (column: Column) {
                 // only include the first x cols
                 var headerCell = that.createHeaderCell(column, false);
                 if (column.pinned) {
@@ -198,7 +198,7 @@ module awk.grid {
             });
         }
 
-        createHeaderCell(column: any, grouped: any, headerGroup?: any) {
+        private createHeaderCell(column: Column, grouped: boolean, headerGroup?: any) {
             var that = this;
             var colDef = column.colDef;
             var eHeaderCell = document.createElement("div");
@@ -209,7 +209,7 @@ module awk.grid {
             if (this.gridOptionsWrapper.isAngularCompileHeaders()) {
                 newChildScope = this.$scope.$new();
                 newChildScope.colDef = colDef;
-                newChildScope.colIndex = colDef.index;
+                newChildScope.colIndex = column.index;
                 newChildScope.colDefWrapper = column;
                 this.childScopes.push(newChildScope);
             }
@@ -234,7 +234,7 @@ module awk.grid {
                 headerCellResize.className = "ag-header-cell-resize";
                 eHeaderCell.appendChild(headerCellResize);
                 var dragCallback = this.headerDragCallbackFactory(eHeaderCell, column, headerGroup);
-                this.addDragHandler(headerCellResize, dragCallback);
+                this.addDragHandler(headerCellResize, dragCallback, column, null);
             }
 
             // filter button
@@ -298,7 +298,7 @@ module awk.grid {
                 headerCellRenderer = this.gridOptionsWrapper.getHeaderCellRenderer();
             }
 
-            var headerNameValue = this.columnModel.getDisplayNameForCol(column);
+            var headerNameValue = this.columnController.getDisplayNameForCol(column);
 
             if (headerCellRenderer) {
                 // renderer provided, use it
@@ -341,7 +341,7 @@ module awk.grid {
             return eHeaderCell;
         }
 
-        addHeaderClassesFromCollDef(colDef: any, $childScope: any, eHeaderCell: any) {
+        private addHeaderClassesFromCollDef(colDef: any, $childScope: any, eHeaderCell: any) {
             if (colDef.headerClass) {
                 var classToUse: any;
                 if (typeof colDef.headerClass === 'function') {
@@ -366,7 +366,7 @@ module awk.grid {
             }
         }
 
-        getNextSortDirection(direction: any) {
+        private getNextSortDirection(direction: any) {
             var suppressUnSort = this.gridOptionsWrapper.isSuppressUnSort();
             var suppressDescSort = this.gridOptionsWrapper.isSuppressDescSort();
 
@@ -390,7 +390,7 @@ module awk.grid {
             }
         }
 
-        addSortHandling(headerCellLabel: any, column: any) {
+        private addSortHandling(headerCellLabel: any, column: any) {
             var that = this;
 
             headerCellLabel.addEventListener("click", function (e: any) {
@@ -408,7 +408,7 @@ module awk.grid {
                 var doingMultiSort = !that.gridOptionsWrapper.isSuppressMultiSort() && e.shiftKey;
 
                 // clear sort on all columns except this one, and update the icons
-                that.columnModel.getAllColumns().forEach(function (columnToClear: any) {
+                that.columnController.getAllColumns().forEach(function (columnToClear: any) {
                     // Do not clear if either holding shift, or if column in question was clicked
                     if (!(doingMultiSort || columnToClear === column)) {
                         columnToClear.sort = null;
@@ -419,8 +419,8 @@ module awk.grid {
             });
         }
 
-        updateSortIcons() {
-            this.columnModel.getAllColumns().forEach(function (column: any) {
+        public updateSortIcons() {
+            this.columnController.getAllColumns().forEach(function (column: any) {
                 // update visibility of icons
                 var sortAscending = column.sort === constants.ASC;
                 var sortDescending = column.sort === constants.DESC;
@@ -439,7 +439,7 @@ module awk.grid {
             });
         }
 
-        groupDragCallbackFactory(currentGroup: any) {
+        private groupDragCallbackFactory(currentGroup: ColumnGroup) {
             var parent = this;
             var displayedColumns = currentGroup.displayedColumns;
             return {
@@ -447,10 +447,10 @@ module awk.grid {
                     this.groupWidthStart = currentGroup.actualWidth;
                     this.childrenWidthStarts = [];
                     var that = this;
-                    displayedColumns.forEach(function (colDefWrapper: any) {
-                        that.childrenWidthStarts.push(colDefWrapper.actualWidth);
+                    displayedColumns.forEach(function (column: Column) {
+                        that.childrenWidthStarts.push(column.actualWidth);
                     });
-                    this.minWidth = displayedColumns.length * constants.MIN_COL_WIDTH;
+                    this.minWidth = currentGroup.getMinimumWidth();
                 },
                 onDragging: function (dragChange: any) {
 
@@ -470,7 +470,7 @@ module awk.grid {
                     // to cater for rounding errors, and min width adjustments
                     var pixelsToDistribute = newWidth;
                     var that = this;
-                    currentGroup.displayedColumns.forEach(function (colDefWrapper: any, index: any) {
+                    currentGroup.displayedColumns.forEach(function (column: Column, index: any) {
                         var notLastCol = index !== (displayedColumns.length - 1);
                         var newChildSize: any;
                         if (notLastCol) {
@@ -486,7 +486,7 @@ module awk.grid {
                             newChildSize = pixelsToDistribute;
                         }
                         var eHeaderCell = displayedColumns[index].eHeaderCell;
-                        parent.adjustColumnWidth(newChildSize, colDefWrapper, eHeaderCell);
+                        parent.adjustColumnWidth(newChildSize, column, eHeaderCell);
                     });
 
                     // should not be calling these here, should do something else
@@ -499,12 +499,13 @@ module awk.grid {
             };
         }
 
-        adjustColumnWidth(newWidth: any, column: any, eHeaderCell: any) {
+        private adjustColumnWidth(newWidth: any, column: any, eHeaderCell: any) {
             var newWidthPx = newWidth + "px";
             var selectorForAllColsInCell = ".cell-col-" + column.index;
-            var cellsForThisCol = this.eRoot.querySelectorAll(selectorForAllColsInCell);
+            var cellsForThisCol: NodeList = this.eRoot.querySelectorAll(selectorForAllColsInCell);
             for (var i = 0; i < cellsForThisCol.length; i++) {
-                cellsForThisCol[i].style.width = newWidthPx;
+                var element = <HTMLElement> cellsForThisCol[i];
+                element.style.width = newWidthPx;
             }
 
             eHeaderCell.style.width = newWidthPx;
@@ -512,45 +513,57 @@ module awk.grid {
         }
 
         // gets called when a header (not a header group) gets resized
-        headerDragCallbackFactory(headerCell: any, column: any, headerGroup: any) {
-            var parent = this;
+        private headerDragCallbackFactory(headerCell: any, column: Column, headerGroup: any) {
+            var that = this;
             return {
                 onDragStart: function () {
                     this.startWidth = column.actualWidth;
                 },
                 onDragging: function (dragChange: any) {
                     var newWidth = this.startWidth + dragChange;
-                    if (newWidth < constants.MIN_COL_WIDTH) {
-                        newWidth = constants.MIN_COL_WIDTH;
+                    if (newWidth < column.getMinimumWidth()) {
+                        newWidth = column.getMinimumWidth();
                     }
 
-                    parent.adjustColumnWidth(newWidth, column, headerCell);
+                    if (column.isGreaterThanMax(newWidth)) {
+                        newWidth = column.colDef.maxWidth;
+                    }
+
+                    that.adjustColumnWidth(newWidth, column, headerCell);
 
                     if (headerGroup) {
-                        parent.setWidthOfGroupHeaderCell(headerGroup);
+                        that.setWidthOfGroupHeaderCell(headerGroup);
                     }
 
                     // should not be calling these here, should do something else
                     if (column.pinned) {
-                        parent.angularGrid.updatePinnedColContainerWidthAfterColResize();
+                        that.angularGrid.updatePinnedColContainerWidthAfterColResize();
                     } else {
-                        parent.angularGrid.updateBodyContainerWidthAfterColResize();
+                        that.angularGrid.updateBodyContainerWidthAfterColResize();
                     }
                 }
             };
         }
 
-        stopDragging(listenersToRemove: any) {
+        private stopDragging(listenersToRemove: any, column: Column, headerGroup: ColumnGroup) {
             this.eRoot.style.cursor = "";
             var that = this;
             utils.iterateObject(listenersToRemove, function (key: any, listener: any) {
                 that.eRoot.removeEventListener(key, listener);
             });
+
+            if (column) {
+                this.fireColumnResized(column);
+            } else {
+                headerGroup.displayedColumns.forEach( (columnInGroup: Column) => {
+                    this.fireColumnResized(columnInGroup);
+                });
+            }
         }
 
-        updateFilterIcons() {
+        public updateFilterIcons() {
             var that = this;
-            this.columnModel.getDisplayedColumns().forEach(function (column: any) {
+            this.columnController.getDisplayedColumns().forEach(function (column: any) {
                 // todo: need to change this, so only updates if column is visible
                 if (column.eFilterIcon) {
                     var filterPresent = that.filterManager.isFilterPresentForCol(column.colId);
@@ -561,4 +574,3 @@ module awk.grid {
         }
     }
 }
-

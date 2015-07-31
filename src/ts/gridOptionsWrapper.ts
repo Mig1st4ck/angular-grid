@@ -52,6 +52,7 @@ module awk.grid {
         getAllRows() { return this.gridOptions.rowData; }
         isGroupUseEntireRow() { return isTrue(this.gridOptions.groupUseEntireRow); }
         getGroupColumnDef() { return this.gridOptions.groupColumnDef; }
+        isGroupSuppressRow() { return isTrue(this.gridOptions.groupSuppressRow); }
         isAngularCompileRows() { return isTrue(this.gridOptions.angularCompileRows); }
         isAngularCompileFilters() { return isTrue(this.gridOptions.angularCompileFilters); }
         isAngularCompileHeaders() { return isTrue(this.gridOptions.angularCompileHeaders); }
@@ -67,6 +68,9 @@ module awk.grid {
         getCellValueChanged() { return this.gridOptions.cellValueChanged; }
         getCellFocused() { return this.gridOptions.cellFocused; }
         getRowSelected() { return this.gridOptions.rowSelected; }
+        getColumnResized() { return this.gridOptions.columnResized; }
+        getColumnVisibilityChanged() { return this.gridOptions.columnVisibilityChanged; }
+        getColumnOrderChanged() { return this.gridOptions.columnOrderChanged; }
         getSelectionChanged() { return this.gridOptions.selectionChanged; }
         getVirtualRowRemoved() { return this.gridOptions.virtualRowRemoved; }
         getDatasource() { return this.gridOptions.datasource; }
@@ -74,13 +78,16 @@ module awk.grid {
         getRowBuffer() { return this.gridOptions.rowBuffer; }
         getExpandedRowsDefault() { return this.gridOptions.expandedRowsDefault || 0; }
         isEnableSorting() { return isTrue(this.gridOptions.enableSorting) || isTrue(this.gridOptions.enableServerSideSorting); }
+        isEnableCellExpressions() { return isTrue(this.gridOptions.enableCellExpressions); }
         isEnableServerSideSorting() { return isTrue(this.gridOptions.enableServerSideSorting); }
         isEnableFilter() { return isTrue(this.gridOptions.enableFilter) || isTrue(this.gridOptions.enableServerSideFilter); }
         isEnableServerSideFilter() { return this.gridOptions.enableServerSideFilter; }
+        isSuppressScrollLag() { return isTrue(this.gridOptions.suppressScrollLag); }
         setSelectedRows(newSelectedRows: any) { return this.gridOptions.selectedRows = newSelectedRows; }
         setSelectedNodesById(newSelectedNodes: any) { return this.gridOptions.selectedNodesById = newSelectedNodes; }
         isDoInternalExpanding() { return !this.isRowsAlreadyExpanded() && this.gridOptions.expandRow; }
         getIcons() { return this.gridOptions.icons; }
+        getIsScrollLag() { return this.gridOptions.isScrollLag; }
 
         getGroupRowInnerRenderer() {
             if (this.gridOptions.groupInnerRenderer) {

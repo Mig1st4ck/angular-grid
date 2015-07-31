@@ -1,4 +1,5 @@
 /// <reference path="../utils.ts" />
+/// <reference path="textAndNumberFilterParameters.ts" />
 
 module awk.grid {
 
@@ -86,9 +87,9 @@ module awk.grid {
                 case EQUALS:
                     return valueAsNumber === this.filterNumber;
                 case LESS_THAN:
-                    return valueAsNumber <= this.filterNumber;
+                    return valueAsNumber < this.filterNumber;
                 case GREATER_THAN:
-                    return valueAsNumber >= this.filterNumber;
+                    return valueAsNumber > this.filterNumber;
                 default:
                     // should never happen
                     console.warn('invalid filter type ' + this.filterType);
