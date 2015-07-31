@@ -3,7 +3,7 @@
 module awk.grid {
 
     export interface GridOptions {
-        expandedRowsDefault: number;
+        expandedRowsDefault?: number;
         rowSelection?: string;
         rowDeselection?: boolean;
         context?: any;
@@ -76,7 +76,7 @@ module awk.grid {
         headerHeight?: number;
         pinnedColumnCount?: number;
         localeText?: any;
-        expandRow: any;
+        expandRow?: any;
         isScrollLag?(): boolean;
         suppressScrollLag?(): boolean;
     }
