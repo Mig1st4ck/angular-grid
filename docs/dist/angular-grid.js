@@ -862,6 +862,13 @@ var awk;
             GridOptionsWrapper.prototype.getRowHeight = function () {
                 return this.rowHeight;
             };
+            // Expand rows
+            GridOptionsWrapper.prototype.getRowExpandRenderer = function () {
+                return this.gridOptions.expandRow;
+            };
+            GridOptionsWrapper.prototype.getExpandedRowsDefault = function () {
+                return this.gridOptions.expandedRowsDefault || 0;
+            };
             // properties
             GridOptionsWrapper.prototype.getHeaderHeight = function () {
                 if (typeof this.headerHeight === 'number') {
@@ -1875,6 +1882,65 @@ var awk;
             return ColumnController;
         })();
         grid.ColumnController = ColumnController;
+    })(grid = awk.grid || (awk.grid = {}));
+})(awk || (awk = {}));
+var awk;
+(function (awk) {
+    var grid;
+    (function (grid) {
+        var ExpandCreator = (function () {
+            function ExpandCreator() {
+            }
+            ExpandCreator.getInstance = function () {
+                if (!this.theInstance) {
+                    this.theInstance = new ExpandCreator();
+                }
+                return this.theInstance;
+            };
+            ExpandCreator.prototype.group = function (rowNodes, defaultExapanded, expandByDefault) {
+                var node;
+                var call = function (n) {
+                    return n.rows || defaultExapanded;
+                };
+                if (typeof defaultExapanded === 'function') {
+                    call = defaultExapanded;
+                }
+                for (var i = 0; i < rowNodes.length; i++) {
+                    node = rowNodes[i];
+                    node.group = true;
+                    node.level = node.level || 0;
+                    node.children = [{
+                        first: true,
+                        parent: node,
+                        data: node.data,
+                        level: node.level + 1
+                    }];
+                    node.rows = call(node);
+                    if (node.rows) {
+                        for (var y = 1; y < node.rows; y++) {
+                            node.children.push({
+                                first: false,
+                                parent: node,
+                                data: node.data,
+                                level: node.level + 1
+                            });
+                        }
+                        ;
+                    }
+                }
+                return rowNodes;
+            };
+            ExpandCreator.prototype.isExpanded = function (expandByDefault, level) {
+                if (typeof expandByDefault === 'number') {
+                    return level < expandByDefault;
+                }
+                else {
+                    return expandByDefault === true || expandByDefault === 'true';
+                }
+            };
+            return ExpandCreator;
+        })();
+        grid.ExpandCreator = ExpandCreator;
     })(grid = awk.grid || (awk.grid = {}));
 })(awk || (awk = {}));
 var awk;
@@ -4298,6 +4364,7 @@ var awk;
                 this.pinning = columnController.isPinning();
                 var groupHeaderTakesEntireRow = this.gridOptionsWrapper.isGroupUseEntireRow();
                 var rowIsHeaderThatSpans = node.group && groupHeaderTakesEntireRow;
+                var rowExpandRenderer = this.gridOptionsWrapper.getRowExpandRenderer();
                 this.vBodyRow = this.createRowContainer();
                 if (this.pinning) {
                     this.vPinnedRow = this.createRowContainer();
@@ -4305,7 +4372,7 @@ var awk;
                 this.rowIndex = rowIndex;
                 this.node = node;
                 this.scope = this.createChildScopeOrNull(node.data);
-                if (!rowIsHeaderThatSpans) {
+                if (!rowIsHeaderThatSpans && !rowExpandRenderer) {
                     this.drawNormalRow();
                 }
                 this.addDynamicStyles();
@@ -4335,6 +4402,9 @@ var awk;
                 // if group item, insert the first row
                 if (rowIsHeaderThatSpans) {
                     this.createGroupRow();
+                }
+                if (rowExpandRenderer) {
+                    this.createExpandedRow();
                 }
                 this.bindVirtualElement(this.vBodyRow);
                 if (this.pinning) {
@@ -4459,6 +4529,27 @@ var awk;
                     _.addCssClass(eRow, 'ag-group-cell-entire-row');
                 }
                 return eRow;
+            };
+            RenderedRow.prototype.createExpandedRow = function () {
+                if (this.node.first) {
+                    var params = {
+                        node: this.node.parent,
+                        data: this.node.parent.data,
+                        rowIndex: this.rowIndex,
+                        api: this.gridOptionsWrapper.getApi()
+                    };
+                    var rowCellRenderer = this.gridOptionsWrapper.getRowExpandRenderer();
+                    var eGroupRow = rowCellRenderer(params);
+                    this.vBodyRow.style.height = (this.gridOptionsWrapper.getRowHeight() * this.node.parent.rows) + 'px';
+                    this.vBodyRow.appendChild(eGroupRow);
+                }
+                if (this.node.group) {
+                    this.drawNormalRow();
+                }
+                else if (!this.node.first) {
+                    this.vBodyRow.style.display = 'none';
+                    return;
+                }
             };
             RenderedRow.prototype.setMainRowWidth = function (width) {
                 this.vBodyRow.addStyles({ width: width + "px" });
@@ -5108,6 +5199,12 @@ var awk;
                 var renderedRow = new grid.RenderedRow(this.gridOptionsWrapper, this.valueService, this.$scope, this.angularGrid, this.columnModel, this.expressionService, this.cellRendererMap, this.selectionRendererFactory, this.$compile, this.templateService, this.selectionController, this, this.eBodyContainer, this.ePinnedColsContainer, node, rowIndex);
                 renderedRow.setMainRowWidth(mainRowWidth);
                 this.renderedRows[rowIndex] = renderedRow;
+            };
+            RowRenderer.prototype.getRenderedNodes = function () {
+                var renderedRows = this.renderedRows;
+                return Object.keys(renderedRows).map(function (key) {
+                    return renderedRows[key].getRowNode();
+                });
             };
             RowRenderer.prototype.getIndexOfRenderedNode = function (node) {
                 var renderedRows = this.renderedRows;
@@ -6386,6 +6483,7 @@ var awk;
 /// <reference path="../utils.ts" />
 /// <reference path="../constants.ts" />
 /// <reference path="../groupCreator.ts" />
+/// <reference path="../expandCreator.ts" />
 /// <reference path="../entities/rowNode.ts" />
 var awk;
 (function (awk) {
@@ -6393,6 +6491,7 @@ var awk;
     (function (grid) {
         var _ = grid.Utils;
         var constants = grid.Constants;
+        var expandCreator = grid.ExpandCreator.getInstance();
         var InMemoryRowController = (function () {
             function InMemoryRowController() {
                 this.createModel();
@@ -6708,6 +6807,30 @@ var awk;
                 }
                 this.rowsAfterGroup = rowsAfterGroup;
             };
+            // private
+            InMemoryRowController.prototype.doExpanding = function () {
+                if (this.gridOptionsWrapper.getRowExpandRenderer()) {
+                    this.gridOptionsWrapper['gridOptions'].rowsAlreadyGrouped = true;
+                    var nodes = [];
+                    for (var i = 0; i < (this.allRows || []).length; i++) {
+                        var node = this.allRows[i];
+                        if (typeof node.data === 'object') {
+                            // its alread a grouped
+                            nodes[i] = node;
+                            continue;
+                        }
+                        nodes[i] = {
+                            data: node,
+                            id: node.id,
+                            level: node.level
+                        };
+                        delete node.id;
+                        delete node.level;
+                    }
+                    this.allRows = nodes;
+                    this.rowsAfterGroup = expandCreator.group(this.allRows, this.gridOptionsWrapper.getExpandedRowsDefault());
+                }
+            };
             InMemoryRowController.prototype.doFilter = function () {
                 var doingFilter;
                 if (this.gridOptionsWrapper.isEnableServerSideFilter()) {
@@ -6787,6 +6910,8 @@ var awk;
                 if (this.columnController.isSetupComplete()) {
                     this.doPivoting();
                 }
+                // process here the expanded
+                this.doExpanding();
             };
             // add in index - this is used by the selectionController - so quick
             // to look up selected rows
@@ -8839,6 +8964,9 @@ var awk;
             };
             GridApi.prototype.getBestCostNodeSelection = function () {
                 return this.selectionController.getBestCostNodeSelection();
+            };
+            GridApi.prototype.getRenderedNodes = function () {
+                return this.rowRenderer.getRenderedNodes();
             };
             GridApi.prototype.ensureColIndexVisible = function (index) {
                 this.gridPanel.ensureColIndexVisible(index);

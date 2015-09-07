@@ -103,6 +103,9 @@ module awk.grid {
         // unknown
         selectedRows?: any[];
         selectedNodesById?: {[email: number]: any;}; // should be typed to node
+        // expand row
+        expandRow?(params: any): void;
+        expandedRowsDefault?(params: any): number;
 
         // apis, set by the grid on init
         api?: GridApi; // change to typed

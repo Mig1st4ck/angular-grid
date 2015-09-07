@@ -108,6 +108,9 @@ module awk.grid {
         public getSlaveGrids(): GridOptions[] { return this.gridOptions.slaveGrids; }
         public getGroupRowRenderer() { return this.gridOptions.groupRowRenderer; }
         public getRowHeight() { return this.rowHeight; }
+        // Expand rows
+        public getRowExpandRenderer() { return this.gridOptions.expandRow; }
+        public getExpandedRowsDefault() { return this.gridOptions.expandedRowsDefault || 0; }
 
         // properties
         public getHeaderHeight(): number {

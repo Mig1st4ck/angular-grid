@@ -278,7 +278,8 @@ module awk.grid {
                     rowIndex: this.rowIndex,
                     api: this.gridOptionsWrapper.getApi()
                 };
-                var eGroupRow = this.gridOptionsWrapper.gridOptions.expandRow(params);
+                var rowCellRenderer = this.gridOptionsWrapper.getRowExpandRenderer();
+                var eGroupRow = rowCellRenderer(params);
                 this.vBodyRow.style.height = (this.gridOptionsWrapper.getRowHeight() * this.node.parent.rows) + 'px';
                 this.vBodyRow.appendChild(eGroupRow);
             }
