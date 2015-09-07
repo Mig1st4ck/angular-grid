@@ -3,11 +3,13 @@
 .ag-root
     font-size: 14px
     cursor: default
-    /* Set to relative, so absolute popups appear relative to this */
+    /* set to relative, so absolute popups appear relative to this */
     position: relative
-    /*disable user mouse selection */
+    /* disable user mouse selection */
     user-select: none
     box-sizing: border-box
+    /* was getting some 'should be there' scrolls, this sorts it out */
+    overflow: hidden
 
 .ag-no-scrolls
     white-space: nowrap
@@ -109,6 +111,60 @@
 .ag-body
     height: 100%
     box-sizing: border-box
+
+.ag-floating-top
+    position: absolute
+    left: 0px
+    width: 100%
+    white-space: nowrap
+    box-sizing: border-box
+    overflow: hidden
+
+.ag-pinned-floating-top
+    box-sizing: border-box
+    display: inline-block
+    overflow: hidden
+    height: 100%
+    position: relative
+
+.ag-floating-top-viewport
+    box-sizing: border-box
+    display: inline-block
+    overflow: hidden
+    height: 100%
+
+.ag-floating-top-container
+    box-sizing: border-box
+    position: relative
+    white-space: nowrap
+    //height: 100%
+
+.ag-floating-bottom
+    position: absolute
+    left: 0px
+    width: 100%
+    white-space: nowrap
+    box-sizing: border-box
+    overflow: hidden
+
+.ag-pinned-floating-bottom
+    box-sizing: border-box
+    display: inline-block
+    overflow: hidden
+    height: 100%
+    position: relative
+
+.ag-floating-bottom-viewport
+    box-sizing: border-box
+    display: inline-block
+    overflow: hidden
+    height: 100%
+
+.ag-floating-bottom-container
+    box-sizing: border-box
+    position: relative
+    white-space: nowrap
+    //height: 100%
 
 .ag-pinned-cols-viewport
     float: left

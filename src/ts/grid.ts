@@ -6,7 +6,7 @@
 /// <reference path="selectionController.ts" />
 /// <reference path="selectionRendererFactory.ts" />
 /// <reference path="rendering/rowRenderer.ts" />
-/// <reference path="rendering/headerRenderer.ts" />
+/// <reference path="headerRendering/headerRenderer.ts" />
 /// <reference path="rowControllers/inMemoryRowController.ts" />
 /// <reference path="rowControllers/virtualPageRowController.ts" />
 /// <reference path="rowControllers/paginationController.ts" />
@@ -18,6 +18,8 @@
 /// <reference path="entities/gridOptions.ts" />
 /// <reference path="gridApi.ts" />
 /// <reference path="valueService.ts" />
+/// <reference path="masterSlaveService.ts" />
+/// <reference path="logger.ts" />
 
 module awk.grid {
 
@@ -26,7 +28,6 @@ module awk.grid {
         private virtualRowCallbacks = <any>{};
         private gridOptions: GridOptions;
         private gridOptionsWrapper: GridOptionsWrapper;
-        private quickFilter: string;
         private inMemoryRowController: InMemoryRowController;
         private doingVirtualPaging: boolean;
         private paginationController: PaginationController;
@@ -38,6 +39,8 @@ module awk.grid {
         private rowRenderer: RowRenderer;
         private headerRenderer: HeaderRenderer;
         private filterManager: FilterManager;
+        private valueService: ValueService;
+        private masterSlaveService: MasterSlaveService;
         private toolPanel: any;
         private gridPanel: GridPanel;
         private eRootPanel: any;
@@ -55,10 +58,10 @@ module awk.grid {
             this.setupComponents($scope, $compile, eGridDiv);
             this.gridOptions.api = new GridApi(this, this.rowRenderer, this.headerRenderer, this.filterManager,
                 this.columnController, this.inMemoryRowController, this.selectionController,
-                this.gridOptionsWrapper, this.gridPanel);
+                this.gridOptionsWrapper, this.gridPanel, this.valueService, this.masterSlaveService);
+            this.gridOptions.columnApi = this.columnController.getColumnApi();
 
             var that = this;
-            this.quickFilter = null;
 
             // if using angular, watch for quickFilter changes
             if ($scope) {
@@ -72,12 +75,12 @@ module awk.grid {
                 window.addEventListener('resize', this.doLayout.bind(this));
             }
 
-            this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getAllRows());
+            this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getRowData());
             this.setupColumns();
             this.updateModelAndRefresh(Constants.STEP_EVERYTHING);
 
             // if no data provided initially, and not doing infinite scrolling, show the loading panel
-            var showLoading = !this.gridOptionsWrapper.getAllRows() && !this.gridOptionsWrapper.isVirtualPaging();
+            var showLoading = !this.gridOptionsWrapper.getRowData() && !this.gridOptionsWrapper.isVirtualPaging();
             this.showLoadingPanel(showLoading);
 
             // if datasource provided, use it
@@ -96,7 +99,7 @@ module awk.grid {
             }
         }
 
-        periodicallyDoLayout() {
+        private periodicallyDoLayout() {
             if (!this.finished) {
                 var that = this;
                 setTimeout(function () {
@@ -106,7 +109,7 @@ module awk.grid {
             }
         }
 
-        setupComponents($scope: any, $compile: any, eUserProvidedDiv: any) {
+        private setupComponents($scope: any, $compile: any, eUserProvidedDiv: any) {
 
             // make local references, to make the below more human readable
             var gridOptionsWrapper = this.gridOptionsWrapper;
@@ -127,14 +130,18 @@ module awk.grid {
             var popupService = new PopupService();
             var valueService = new ValueService();
             var groupCreator = new GroupCreator();
+            var masterSlaveService = new MasterSlaveService();
+            var loggerFactory = new LoggerFactory(gridOptionsWrapper.isDebug());
 
             // initialise all the beans
             templateService.init($scope);
+            expressionService.init(loggerFactory);
             selectionController.init(this, gridPanel, gridOptionsWrapper, $scope, rowRenderer);
             filterManager.init(this, gridOptionsWrapper, $compile, $scope,
                 columnController, popupService, valueService);
             selectionRendererFactory.init(this, selectionController);
-            columnController.init(this, selectionRendererFactory, gridOptionsWrapper, expressionService, valueService);
+            columnController.init(this, selectionRendererFactory, gridOptionsWrapper,
+                expressionService, valueService, masterSlaveService);
             rowRenderer.init(columnController, gridOptionsWrapper, gridPanel, this, selectionRendererFactory, $compile,
                 $scope, selectionController, expressionService, templateService, valueService);
             headerRenderer.init(gridOptionsWrapper, columnController, gridPanel, this, filterManager,
@@ -142,9 +149,10 @@ module awk.grid {
             inMemoryRowController.init(gridOptionsWrapper, columnController, this, filterManager, $scope,
                 groupCreator, valueService);
             virtualPageRowController.init(rowRenderer, gridOptionsWrapper, this);
-            gridPanel.init(columnController, rowRenderer);
+            gridPanel.init(columnController, rowRenderer, masterSlaveService);
             valueService.init(gridOptionsWrapper, expressionService, columnController);
             groupCreator.init(valueService);
+            masterSlaveService.init(gridOptionsWrapper, columnController, gridPanel, loggerFactory);
 
             var toolPanelLayout: any = null;
             var toolPanel: any = null;
@@ -182,9 +190,11 @@ module awk.grid {
             this.filterManager = filterManager;
             this.toolPanel = toolPanel;
             this.gridPanel = gridPanel;
+            this.valueService = valueService;
+            this.masterSlaveService = masterSlaveService;
 
             this.eRootPanel = new BorderLayout({
-                center: gridPanel.layout,
+                center: gridPanel.getLayout(),
                 east: toolPanelLayout,
                 south: paginationGui,
                 dontFill: forPrint,
@@ -200,21 +210,35 @@ module awk.grid {
 
             eUserProvidedDiv.appendChild(this.eRootPanel.getGui());
 
-            var that = this;
-            columnController.addListener({
-                valuesChanged: function() {
-                    that.inMemoryRowController.doAggregate();
-                },
-                pivotChanged: function() {
-                    that.inMemoryRowController.onPivotChanged();
-                },
-                columnsChanged: function() {
-                    that.refreshHeaderAndBody();
+            columnController.addChangeListener( (event: ColumnChangeEvent) => {
+                if (event.isPivotChanged()) {
+                    this.inMemoryRowController.onPivotChanged();
                 }
+                if (event.isValueChanged()) {
+                    this.inMemoryRowController.doAggregate();
+                }
+
+                if (event.isIndividualColumnResized()) {
+                    this.onIndividualColumnResized(event.getColumn());
+                } else {
+                    this.refreshHeaderAndBody();
+                }
+
+                this.gridPanel.showPinnedColContainersIfNeeded();
             });
         }
 
-        showToolPanel(show: any) {
+        private onIndividualColumnResized(column: Column): void {
+            this.headerRenderer.onIndividualColumnResized(column);
+            this.rowRenderer.onIndividualColumnResized(column);
+            if (column.pinned) {
+                this.updatePinnedColContainerWidthAfterColResize();
+            } else {
+                this.updateBodyContainerWidthAfterColResize();
+            }
+        }
+
+        public showToolPanel(show: any) {
             if (!this.toolPanel) {
                 this.toolPanelShowing = false;
                 return;
@@ -224,11 +248,11 @@ module awk.grid {
             this.eRootPanel.setEastVisible(show);
         }
 
-        isToolPanelShowing() {
+        public isToolPanelShowing() {
             return this.toolPanelShowing;
         }
 
-        setDatasource(datasource?: any) {
+        public setDatasource(datasource?: any) {
             // if datasource provided, then set it
             if (datasource) {
                 this.gridOptions.datasource = datasource;
@@ -271,7 +295,7 @@ module awk.grid {
         }
 
         // gets called after columns are shown / hidden from groups expanding
-        refreshHeaderAndBody() {
+        private refreshHeaderAndBody() {
             this.headerRenderer.refreshHeader();
             this.headerRenderer.updateFilterIcons();
             this.headerRenderer.updateSortIcons();
@@ -280,41 +304,29 @@ module awk.grid {
             this.rowRenderer.refreshView();
         }
 
-        setFinished() {
+        public setFinished() {
             window.removeEventListener('resize', this.doLayout);
             this.finished = true;
         }
 
-        getQuickFilter() {
-            return this.quickFilter;
-        }
-
-        onQuickFilterChanged(newFilter: any) {
-            if (newFilter === undefined || newFilter === "") {
-                newFilter = null;
-            }
-            if (this.quickFilter !== newFilter) {
-                if (this.gridOptionsWrapper.isVirtualPaging()) {
-                    console.warn('ag-grid: cannot do quick filtering when doing virtual paging');
-                    return;
-                }
-
-                //want 'null' to mean to filter, so remove undefined and empty string
-                if (newFilter === undefined || newFilter === "") {
-                    newFilter = null;
-                }
-                if (newFilter !== null) {
-                    newFilter = newFilter.toUpperCase();
-                }
-                this.quickFilter = newFilter;
+        public onQuickFilterChanged(newFilter: any) {
+            var actuallyChanged = this.filterManager.setQuickFilter(newFilter);
+            if (actuallyChanged) {
                 this.onFilterChanged();
             }
         }
 
-        onFilterChanged() {
+        public onFilterModified() {
+            if (typeof this.gridOptionsWrapper.getFilterModified() === 'function') {
+                this.gridOptionsWrapper.getFilterModified()();
+            }
+        }
+
+        public onFilterChanged() {
             if (typeof this.gridOptionsWrapper.getBeforeFilterChanged() === 'function') {
                 this.gridOptionsWrapper.getBeforeFilterChanged()();
             }
+            this.filterManager.onFilterChanged();
             this.headerRenderer.updateFilterIcons();
             if (this.gridOptionsWrapper.isEnableServerSideFilter()) {
                 // if doing server side filtering, changing the sort has the impact
@@ -329,7 +341,7 @@ module awk.grid {
             }
         }
 
-        onRowClicked(event: any, rowIndex: any, node: any) {
+        public onRowClicked(event: any, rowIndex: any, node: any) {
 
             if (this.gridOptions.rowClicked) {
                 var params = {
@@ -344,6 +356,11 @@ module awk.grid {
             // we do not allow selecting groups by clicking (as the click here expands the group)
             // so return if it's a group row
             if (node.group) {
+                return;
+            }
+
+            // we also don't allow selection of floating rows
+            if (node.floating) {
                 return;
             }
 
@@ -376,13 +393,12 @@ module awk.grid {
             }
         }
 
-        showLoadingPanel(show: any) {
+        public showLoadingPanel(show: any) {
             this.gridPanel.showLoading(show);
         }
 
-        setupColumns() {
-            this.gridPanel.setHeaderHeight();
-            this.columnController.setColumns(this.gridOptionsWrapper.getColumnDefs());
+        private setupColumns() {
+            this.columnController.onColumnsChanged();
             this.gridPanel.showPinnedColContainersIfNeeded();
         }
 
@@ -390,16 +406,16 @@ module awk.grid {
         // if we are expanding or collapsing a group, then only he rows below the group
         // need to be refresh. this allows the context (eg focus) of the other cells to
         // remain.
-        updateModelAndRefresh(step: any, refreshFromIndex?: any) {
+        public updateModelAndRefresh(step: any, refreshFromIndex?: any) {
             this.inMemoryRowController.updateModel(step);
             this.rowRenderer.refreshView(refreshFromIndex);
         }
 
-        setRows(rows?: any, firstId?: any) {
+        public setRows(rows?: any, firstId?: any) {
             if (rows) {
                 this.gridOptions.rowData = rows;
             }
-            this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getAllRows(), firstId);
+            this.inMemoryRowController.setAllRows(this.gridOptionsWrapper.getRowData(), firstId);
             this.selectionController.deselectAll();
             this.filterManager.onNewRowsLoaded();
             this.updateModelAndRefresh(Constants.STEP_EVERYTHING);
@@ -407,7 +423,7 @@ module awk.grid {
             this.showLoadingPanel(false);
         }
 
-        ensureNodeVisible(comparator: any) {
+        public ensureNodeVisible(comparator: any) {
             if (this.doingVirtualPaging) {
                 throw 'Cannot use ensureNodeVisible when doing virtual paging, as we cannot check rows that are not in memory';
             }
@@ -436,11 +452,11 @@ module awk.grid {
             }
         }
 
-        getFilterModel() {
+        public getFilterModel() {
             return this.filterManager.getFilterModel();
         }
 
-        setFocusedCell(rowIndex: any, colIndex: any) {
+        public setFocusedCell(rowIndex: any, colIndex: any) {
             this.gridPanel.ensureIndexVisible(rowIndex);
             this.gridPanel.ensureColIndexVisible(colIndex);
             var that = this;
@@ -449,7 +465,7 @@ module awk.grid {
             }, 10);
         }
 
-        getSortModel() {
+        public getSortModel() {
             var allColumns = this.columnController.getAllColumns();
             var columnsWithSorting = <any>[];
             var i: any;
@@ -465,7 +481,7 @@ module awk.grid {
             var result = <any>[];
             for (i = 0; i < columnsWithSorting.length; i++) {
                 var resultEntry = {
-                    field: columnsWithSorting[i].colDef.field,
+                    colId: columnsWithSorting[i].colId,
                     sort: columnsWithSorting[i].sort
                 };
                 result.push(resultEntry);
@@ -474,7 +490,7 @@ module awk.grid {
             return result;
         }
 
-        setSortModel(sortModel: any) {
+        public setSortModel(sortModel: any) {
             if (!this.gridOptionsWrapper.isEnableSorting()) {
                 console.warn('ag-grid: You are setting the sort model on a grid that does not have sorting enabled');
                 return;
@@ -490,9 +506,9 @@ module awk.grid {
                 if (sortModelProvided && !column.colDef.suppressSorting) {
                     for (var j = 0; j < sortModel.length; j++) {
                         var sortModelEntry = sortModel[j];
-                        if (typeof sortModelEntry.field === 'string'
-                            && typeof column.colDef.field === 'string'
-                            && sortModelEntry.field === column.colDef.field) {
+                        if (typeof sortModelEntry.colId === 'string'
+                            && typeof column.colId === 'string'
+                            && sortModelEntry.colId === column.colId) {
                             sortForCol = sortModelEntry.sort;
                             sortedAt = j;
                         }
@@ -511,7 +527,7 @@ module awk.grid {
             this.onSortingChanged();
         }
 
-        onSortingChanged() {
+        public onSortingChanged() {
             if (typeof this.gridOptionsWrapper.getBeforeSortChanged() === 'function') {
                 this.gridOptionsWrapper.getBeforeSortChanged()();
             }
@@ -529,14 +545,14 @@ module awk.grid {
             }
         }
 
-        addVirtualRowListener(rowIndex: any, callback: any) {
+        public addVirtualRowListener(rowIndex: any, callback: any) {
             if (!this.virtualRowCallbacks[rowIndex]) {
                 this.virtualRowCallbacks[rowIndex] = [];
             }
             this.virtualRowCallbacks[rowIndex].push(callback);
         }
 
-        onVirtualRowSelected(rowIndex: any, selected: any) {
+        public onVirtualRowSelected(rowIndex: any, selected: any) {
             // inform the callbacks of the event
             if (this.virtualRowCallbacks[rowIndex]) {
                 this.virtualRowCallbacks[rowIndex].forEach(function (callback: any) {
@@ -548,7 +564,7 @@ module awk.grid {
             this.rowRenderer.onRowSelected(rowIndex, selected);
         }
 
-        onVirtualRowRemoved(rowIndex: any) {
+        public onVirtualRowRemoved(rowIndex: any) {
             // inform the callbacks of the event
             if (this.virtualRowCallbacks[rowIndex]) {
                 this.virtualRowCallbacks[rowIndex].forEach(function (callback: any) {
@@ -561,30 +577,29 @@ module awk.grid {
             delete this.virtualRowCallbacks[rowIndex];
         }
 
-        onNewCols() {
+        public onNewCols() {
             this.setupColumns();
             this.updateModelAndRefresh(Constants.STEP_EVERYTHING);
             // found that adding pinned column can upset the layout
             this.doLayout();
         }
 
-        updateBodyContainerWidthAfterColResize() {
+        public updateBodyContainerWidthAfterColResize() {
             this.rowRenderer.setMainRowWidths();
             this.gridPanel.setBodyContainerWidth();
         }
 
-        updatePinnedColContainerWidthAfterColResize() {
+        public updatePinnedColContainerWidthAfterColResize() {
             this.gridPanel.setPinnedColContainerWidth();
         }
 
-        doLayout() {
+        public doLayout() {
             // need to do layout first, as drawVirtualRows and setPinnedColHeight
             // need to know the result of the resizing of the panels.
             var sizeChanged = this.eRootPanel.doLayout();
             // both of the two below should be done in gridPanel, the gridPanel should register 'resize' to the panel
             if (sizeChanged) {
                 this.rowRenderer.drawVirtualRows();
-                this.gridPanel.setPinnedColHeight();
             }
         }
     }

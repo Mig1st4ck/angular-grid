@@ -1,8 +1,4 @@
-/// <reference path="utils.ts"/>
-
 module awk.grid {
-
-    var _ = Utils;
 
     export class GroupCreator {
 
@@ -12,25 +8,25 @@ module awk.grid {
             this.valueService = valueService;
         }
 
-        public group(rowNodes: any, groupedCols: any, expandByDefault: any) {
+        public group(rowNodes: RowNode[], groupedCols: Column[], expandByDefault: any) {
 
-            var topMostGroup = {
+            var topMostGroup: RowNode = {
                 level: -1,
-                children: <any>[],
-                childrenMap: <any>{}
+                children: [],
+                _childrenMap: {}
             };
 
-            var allGroups = <any>[];
+            var allGroups: RowNode[] = [];
             allGroups.push(topMostGroup);
 
             var levelToInsertChild = groupedCols.length - 1;
             var i: number;
             var currentLevel: number;
-            var node: any;
+            var node: RowNode;
             var data: any;
             var currentGroup: any;
-            var groupKey: any;
-            var nextGroup: any;
+            var groupKey: string;
+            var nextGroup: RowNode;
 
             // start at -1 and go backwards, as all the positive indexes
             // are already used by the nodes.
@@ -45,14 +41,14 @@ module awk.grid {
 
                 for (currentLevel = 0; currentLevel < groupedCols.length; currentLevel++) {
                     var groupColumn = groupedCols[currentLevel];
-                    groupKey = this.valueService.getValue(groupColumn, data, node);
+                    groupKey = this.valueService.getValue(groupColumn.colDef, data, node);
 
                     if (currentLevel === 0) {
                         currentGroup = topMostGroup;
                     }
 
                     // if group doesn't exist yet, create it
-                    nextGroup = currentGroup.childrenMap[groupKey];
+                    nextGroup = currentGroup._childrenMap[groupKey];
                     if (!nextGroup) {
                         nextGroup = {
                             group: true,
@@ -65,9 +61,9 @@ module awk.grid {
                             parent: currentGroup === topMostGroup ? null : currentGroup,
                             allChildrenCount: 0,
                             level: currentGroup.level + 1,
-                            childrenMap: {} //this is a temporary map, we remove at the end of this method
+                            _childrenMap: {} //this is a temporary map, we remove at the end of this method
                         };
-                        currentGroup.childrenMap[groupKey] = nextGroup;
+                        currentGroup._childrenMap[groupKey] = nextGroup;
                         currentGroup.children.push(nextGroup);
                         allGroups.push(nextGroup);
                     }
@@ -83,10 +79,10 @@ module awk.grid {
                 }
 
             }
-
+``
             //remove the temporary map
             for (i = 0; i < allGroups.length; i++) {
-                delete allGroups[i].childrenMap;
+                delete allGroups[i]._childrenMap;
             }
 
             return topMostGroup.children;

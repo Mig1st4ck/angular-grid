@@ -45,6 +45,14 @@ include '../documentation_header.php';
             <td>Data to be displayed as rows in the table</td>
         </tr>
         <tr>
+            <th>floatingTopRowData</th>
+            <td>Data to be displayed as floating top rows in the table</td>
+        </tr>
+        <tr>
+            <th>floatingBottomRowData</th>
+            <td>Data to be displayed as floating bottom rows in the table</td>
+        </tr>
+        <tr>
             <th>rowSelection</th>
             <td>Type of row selection, set to either 'single' or 'multiple' to enable selection.</td>
         </tr>
@@ -76,14 +84,6 @@ include '../documentation_header.php';
             <td>Set to true to allow cells to contain expressions.</td>
         </tr>
         <tr>
-            <th>suppressUnSort</th>
-            <td>Set to true or false. If true, clicking column header cannot remove the sort.</td>
-        </tr>
-        <tr>
-            <th>suppressDescSort</th>
-            <td>Set to true or false. If true, sorting descending is disabled.</td>
-        </tr>
-        <tr>
             <th>unSortIcon</th>
             <td>Set to true to show the 'no sort' icon.</td>
         </tr>
@@ -100,6 +100,14 @@ include '../documentation_header.php';
         <tr>
             <th>quickFilterText</th>
             <td>Rows are filtered using this text as a 'quick filter'.</td>
+        </tr>
+        <tr>
+            <th>isExternalFilterPresent()</th>
+            <td>Grid calls this method to know if external filter is present.</td>
+        </tr>
+        <tr>
+            <th>doesExternalFilterPass(node)</th>
+            <td>Return true if external filter passes, otherwise false.</td>
         </tr>
         <tr>
             <th>rowClass</th>
@@ -131,7 +139,7 @@ include '../documentation_header.php';
         <tr>
             <th>groupKeys<br/> groupUseEntireRow<br/> groupRowInnerRenderer<br/>
                 groupDefaultExpanded<br/> groupAggFields <br/> groupAggFunction<br/>
-                groupSelectsChildren<br/> groupSuppressAutoColumn <br/> groupHidePivotColumns</th>
+                groupSelectsChildren<br/> groupSuppressAutoColumn <br/> groupHidePivotColumns <br/> groupSuppressBlankHeader</th>
             <td>Parameters for grouping. See the section on grouping for details explanation.</td>
         </tr>
         <tr>
@@ -168,21 +176,9 @@ include '../documentation_header.php';
                 gets called after the grid executes the sort.</td>
         </tr>
         <tr>
-            <th>beforeFilterChanged()<br/>afterFilterChanged()</th>
+            <th>filterModified()<br/>beforeFilterChanged()<br/>afterFilterChanged()</th>
             <td>Callbacks that get called when the filtering changes. 'before' method gets called before the grid executes the filter. 'after' method
-                gets called after the grid executes the filter.</td>
-        </tr>
-        <tr>
-            <th>columnResized</th>
-            <td>Function callback, gets called when a column has finished being resized by dragging its handle.</td>
-        </tr>
-        <tr>
-            <th>columnVisibilityChanged</th>
-            <td>Function callback, gets called when a column has its visibility toggled from the tools panel.</td>
-        </tr>
-        <tr>
-            <th>columnOrderChanged</th>
-            <td>Function callback, gets called when a column is re-ordered by changing its position from the tools panel.</td>
+                gets called after the grid executes the filter. filterModified is useful when using the Apply button.</td>
         </tr>
         <tr>
             <th>ready</th>
@@ -222,7 +218,8 @@ include '../documentation_header.php';
         </tr>
         <tr>
             <th>rowsBuffer</th>
-            <td>Defaults to 20.  Set higher to increase the number of rows that automatically load before and after the viewport.</td>
+            <td>The number of rows rendered outside the scrollable viewable area the grid renders. Defaults to 20.
+                Having a buffer means the grid will have rows ready to show as the user slowly scrolls vertically.</td>
         </tr>
         <tr>
             <th>showToolPanel</th>
@@ -245,6 +242,21 @@ include '../documentation_header.php';
                 true to turn off scroll lag feature alltogether, or b) return true of false from the function
                 isScrollLag. This is a function, as it's expected your code will check the environment to decide
                 whether to use scroll lag or not.</td>
+        </tr>
+        <tr>
+            <th>suppressMenuHide</th>
+            <td>Set to true to always show the column menu button, rather than only showing when the mouse is
+                over the column header.</td>
+        </tr>
+        <tr>
+            <th>suppressHorizontalScroll</th>
+            <td>Set to true to never show the horizontal scroll. This is useful if the grid is a slave grid,
+                and will scroll with a master grid.</td>
+        </tr>
+        <tr>
+            <th>slaveGrids</th>
+            <td>A list of grids to treat as slaves. If a grid is a slave, it's columns and horizontal scrolling
+            will try to mirror the columns of the master.</td>
         </tr>
     </table>
 

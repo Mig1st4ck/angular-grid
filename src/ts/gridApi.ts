@@ -1,6 +1,6 @@
 /// <reference path="grid.ts" />
 /// <reference path="rendering/rowRenderer.ts" />
-/// <reference path="rendering/headerRenderer.ts" />
+/// <reference path="headerRendering/headerRenderer.ts" />
 
 module awk.grid {
 
@@ -14,113 +14,133 @@ module awk.grid {
                     private inMemoryRowController: InMemoryRowController,
                     private selectionController: SelectionController,
                     private gridOptionsWrapper: GridOptionsWrapper,
-                    private gridPanel: GridPanel) {}
+                    private gridPanel: GridPanel,
+                    private valueService: ValueService,
+                    private masterSlaveService: MasterSlaveService) {
+        }
 
-        setDatasource(datasource:any) {
+        /** Used internally by grid. Not intended to be used by the client. Interface may change between releases. */
+        public __getMasterSlaveService(): MasterSlaveService {
+            return this.masterSlaveService;
+        }
+
+        public setDatasource(datasource:any) {
             this.grid.setDatasource(datasource);
         }
 
-        onNewDatasource() {
+        public onNewDatasource() {
             this.grid.setDatasource();
         }
 
-        setRows(rows:any) {
+        public setRows(rows:any) {
             this.grid.setRows(rows);
         }
 
-        onNewRows() {
+        public onNewRows() {
             this.grid.setRows();
         }
 
-        onNewCols() {
+        public setFloatingTopRowData(rows: any[]): void {
+            this.gridOptionsWrapper.setFloatingTopRowData(rows);
+            this.gridPanel.onBodyHeightChange();
+            this.refreshView();
+        }
+
+        public setFloatingBottomRowData(rows: any[]): void {
+            this.gridOptionsWrapper.setFloatingBottomRowData(rows);
+            this.gridPanel.onBodyHeightChange();
+            this.refreshView();
+        }
+
+        public onNewCols() {
             this.grid.onNewCols();
         }
 
-        unselectAll() {
+        public unselectAll() {
             console.error("unselectAll deprecated, call deselectAll instead");
             this.deselectAll();
         }
 
-        refreshView() {
+        public refreshView() {
             this.rowRenderer.refreshView();
         }
 
-        softRefreshView() {
+        public softRefreshView() {
             this.rowRenderer.softRefreshView();
         }
 
-        refreshGroupRows() {
+        public refreshGroupRows() {
             this.rowRenderer.refreshGroupRows();
         }
 
-        refreshHeader() {
+        public refreshHeader() {
             // need to review this - the refreshHeader should also refresh all icons in the header
             this.headerRenderer.refreshHeader();
             this.headerRenderer.updateFilterIcons();
         }
 
-        getModel() {
+        public getModel() {
             return this.grid.rowModel;
         }
 
-        onGroupExpandedOrCollapsed(refreshFromIndex:any) {
+        public onGroupExpandedOrCollapsed(refreshFromIndex:any) {
             this.grid.updateModelAndRefresh(Constants.STEP_MAP, refreshFromIndex);
         }
 
-        expandAll() {
+        public expandAll() {
             this.inMemoryRowController.expandOrCollapseAll(true, null);
             this.grid.updateModelAndRefresh(Constants.STEP_MAP);
         }
 
-        collapseAll() {
+        public collapseAll() {
             this.inMemoryRowController.expandOrCollapseAll(false, null);
             this.grid.updateModelAndRefresh(Constants.STEP_MAP);
         }
 
-        addVirtualRowListener(rowIndex:any, callback:any) {
+        public addVirtualRowListener(rowIndex:any, callback:any) {
             this.grid.addVirtualRowListener(rowIndex, callback);
         }
 
-        rowDataChanged(rows:any) {
+        public rowDataChanged(rows:any) {
             this.rowRenderer.rowDataChanged(rows);
         }
 
-        setQuickFilter(newFilter:any) {
+        public setQuickFilter(newFilter:any) {
             this.grid.onQuickFilterChanged(newFilter)
         }
 
-        selectIndex(index:any, tryMulti:any, suppressEvents:any) {
+        public selectIndex(index:any, tryMulti:any, suppressEvents:any) {
             this.selectionController.selectIndex(index, tryMulti, suppressEvents);
         }
 
-        deselectIndex(index:any) {
+        public deselectIndex(index:any) {
             this.selectionController.deselectIndex(index);
         }
 
-        selectNode(node:any, tryMulti:any, suppressEvents:any) {
+        public selectNode(node:any, tryMulti:any, suppressEvents:any) {
             this.selectionController.selectNode(node, tryMulti, suppressEvents);
         }
 
-        deselectNode(node:any) {
+        public deselectNode(node:any) {
             this.selectionController.deselectNode(node);
         }
 
-        selectAll() {
+        public selectAll() {
             this.selectionController.selectAll();
             this.rowRenderer.refreshView();
         }
 
-        deselectAll() {
+        public deselectAll() {
             this.selectionController.deselectAll();
             this.rowRenderer.refreshView();
         }
 
-        recomputeAggregates() {
+        public recomputeAggregates() {
             this.inMemoryRowController.doAggregate();
             this.rowRenderer.refreshGroupRows();
         }
 
-        sizeColumnsToFit() {
+        public sizeColumnsToFit() {
             if (this.gridOptionsWrapper.isDontUseScrolls()) {
                 console.warn('ag-grid: sizeColumnsToFit does not work when dontUseScrolls=true');
                 return;
@@ -129,49 +149,53 @@ module awk.grid {
             this.columnController.sizeColumnsToFit(availableWidth);
         }
 
-        showLoading(show:any) {
+        public showLoading(show:any) {
             this.grid.showLoadingPanel(show);
         }
 
-        isNodeSelected(node:any) {
+        public isNodeSelected(node:any) {
             return this.selectionController.isNodeSelected(node);
         }
 
-        getSelectedNodes() {
+        public getSelectedNodes() {
             return this.selectionController.getSelectedNodes();
         }
 
-        getBestCostNodeSelection() {
+        public getBestCostNodeSelection() {
             return this.selectionController.getBestCostNodeSelection();
         }
 
-        ensureColIndexVisible(index:any) {
+        public getRenderedNodes() {
+            return this.rowRenderer.getRenderedNodes();
+        }
+
+        public ensureColIndexVisible(index:any) {
             this.gridPanel.ensureColIndexVisible(index);
         }
 
-        ensureIndexVisible(index:any) {
+        public ensureIndexVisible(index:any) {
             this.gridPanel.ensureIndexVisible(index);
         }
 
-        ensureNodeVisible(comparator:any) {
+        public ensureNodeVisible(comparator:any) {
             this.grid.ensureNodeVisible(comparator);
         }
 
-        forEachInMemory(callback:any) {
+        public forEachInMemory(callback:any) {
             this.grid.rowModel.forEachInMemory(callback);
         }
 
-        getFilterApiForColDef(colDef:any) {
+        public getFilterApiForColDef(colDef:any) {
             console.warn('ag-grid API method getFilterApiForColDef deprecated, use getFilterApi instead');
             return this.getFilterApi(colDef);
         }
 
-        getFilterApi(key:any) {
+        public getFilterApi(key:any) {
             var column = this.columnController.getColumn(key);
             return this.filterManager.getFilterApi(column);
         }
 
-        getColumnDef(key:any) {
+        public getColumnDef(key:any) {
             var column = this.columnController.getColumn(key);
             if (column) {
                 return column.colDef;
@@ -180,60 +204,81 @@ module awk.grid {
             }
         }
 
-        onFilterChanged() {
+        public onFilterChanged() {
             this.grid.onFilterChanged();
         }
 
-        setSortModel(sortModel:any) {
+        public setSortModel(sortModel:any) {
             this.grid.setSortModel(sortModel);
         }
 
-        getSortModel() {
+        public getSortModel() {
             return this.grid.getSortModel();
         }
 
-        setFilterModel(model:any) {
+        public setFilterModel(model:any) {
             this.filterManager.setFilterModel(model);
         }
 
-        getFilterModel() {
+        public getFilterModel() {
             return this.grid.getFilterModel();
         }
 
-        getFocusedCell() {
+        public getFocusedCell() {
             return this.rowRenderer.getFocusedCell();
         }
 
-        setFocusedCell(rowIndex:any, colIndex:any) {
+        public setFocusedCell(rowIndex:any, colIndex:any) {
             this.grid.setFocusedCell(rowIndex, colIndex);
         }
 
-        showToolPanel(show:any) {
+        public setHeaderHeight(headerHeight: number) {
+            this.gridOptionsWrapper.setHeaderHeight(headerHeight);
+            this.gridPanel.onBodyHeightChange();
+        }
+
+        public setGroupHeaders(groupHeaders: boolean) {
+            this.gridOptionsWrapper.setGroupHeaders(groupHeaders);
+            this.columnController.onColumnsChanged();
+            // if using the default height, then this is impacted by the header count
+            this.gridPanel.onBodyHeightChange();
+        }
+
+        public showToolPanel(show:any) {
             this.grid.showToolPanel(show);
         }
 
-        isToolPanelShowing() {
+        public isToolPanelShowing() {
             return this.grid.isToolPanelShowing();
         }
 
-        hideColumn(colId:any, hide:any) {
+        public hideColumn(colId:any, hide:any) {
+            console.warn('ag-Grid: hideColumn deprecated - use hideColumn on columnApi instead eg api.columnApi.hideColumn()');
             this.columnController.hideColumns([colId], hide);
         }
 
-        hideColumns(colIds:any, hide:any) {
+        public hideColumns(colIds:any, hide:any) {
+            console.warn('ag-Grid: hideColumns deprecated - use hideColumns on columnApi instead eg api.columnApi.hideColumns()');
             this.columnController.hideColumns(colIds, hide);
         }
 
-        getColumnState() {
+        public getColumnState() {
+            console.warn('ag-Grid: getColumnState deprecated - use getColumnState on columnApi instead eg api.columnApi.getState()');
             return this.columnController.getState();
         }
 
-        setColumnState(state:any) {
+        public setColumnState(state:any) {
+            console.warn('ag-Grid: setColumnState deprecated - use setColumnState on columnApi instead eg api.columnApi.setState()');
             this.columnController.setState(state);
         }
 
-        doLayout() {
+        public doLayout() {
             this.grid.doLayout();
         }
+
+        public getValue(colDef: ColDef, data: any, node: any): any {
+            return this.valueService.getValue(colDef, data, node);
+        }
+
     }
 }

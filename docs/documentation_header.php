@@ -211,9 +211,21 @@
                     <a class="sidebarLink" href="/angular-grid-internationalisation/index.php">Internationalisation</a>
                 <?php } ?>
 
+                <?php if ($key == "Master / Slave") { ?>
+                    <span class="sidebarLinkSelected">Master / Slave</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/angular-grid-master-slave/index.php">Master / Slave</a>
+                <?php } ?>
+
                 <h4>
                     Working with Data
                 </h4>
+
+                <?php if ($key == "Floating") { ?>
+                    <span class="sidebarLinkSelected">Floating Rows</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/angular-grid-floating/index.php">Floating Rows</a>
+                <?php } ?>
 
                 <?php if ($key == "Grouping") { ?>
                     <span class="sidebarLinkSelected">Grouping & Aggregating Rows</span>
@@ -225,6 +237,16 @@
                     <span class="sidebarLinkSelected">Tool Panel</span>
                 <?php } else { ?>
                     <a class="sidebarLink" href="/angular-grid-tool-panel/index.php">Tool Panel</a>
+                <?php } ?>
+
+                <h4>
+                    API's
+                </h4>
+
+                <?php if ($key == "Grid API") { ?>
+                    <span class="sidebarLinkSelected">Grid API</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/angular-grid-api/index.php">Grid API</a>
                 <?php } ?>
 
                 <?php if ($key == "Column API") { ?>
@@ -289,12 +311,6 @@
                     <a class="sidebarLink" href="/angular-grid-no-scrolls/index.php">No Scrolling</a>
                 <?php } ?>
 
-                <?php if ($key == "API") { ?>
-                    <span class="sidebarLinkSelected">API</span>
-                <?php } else { ?>
-                    <a class="sidebarLink" href="/angular-grid-api/index.php">API</a>
-                <?php } ?>
-
                 <h4>
                     Examples
                 </h4>
@@ -329,10 +345,26 @@
                     <a class="sidebarLink" href="/example-row-expanded/index.php">Row Expanded</a>
                 <?php } ?>
 
-                <?php if ($key == "No Angular") { ?>
-                    <span class="sidebarLinkSelected">No AngularJS</span>
+                <h4>
+                    Beyong Angular 1.x
+                </h4>
+
+                <?php if ($key == "Native Javascript") { ?>
+                    <span class="sidebarLinkSelected">Native Javascript</span>
                 <?php } else { ?>
-                    <a class="sidebarLink" href="/example-html5-datagrid/index.php">No AngularJS</a>
+                    <a class="sidebarLink" href="/example-native-javascript-grid/index.php">Native Javascript</a>
+                <?php } ?>
+
+                <?php if ($key == "Web Components") { ?>
+                    <span class="sidebarLinkSelected"><img src="/images/lab.png"/>Web Components</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/example-web-component-grid/index.php"><img src="/images/lab.png"/>Web Components</a>
+                <?php } ?>
+
+                <?php if ($key == "Angular 2") { ?>
+                    <span class="sidebarLinkSelected"><img src="/images/lab.png"/>Angular 2</span>
+                <?php } else { ?>
+                    <a class="sidebarLink" href="/example-angular-2/index.php"><img src="/images/lab.png"/>Angular 2</a>
                 <?php } ?>
 
             </div>

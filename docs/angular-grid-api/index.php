@@ -1,13 +1,13 @@
 <?php
-$key = "API";
+$key = "Grid API";
 $pageTitle = "Angular Compiling";
-$pageDescription = "Angular Grid Angular Compiling";
-$pageKeyboards = "Angular Grid Angular Compiling";
+$pageDescription = "Angular Grid API";
+$pageKeyboards = "Angular Grid API";
 include '../documentation_header.php';
 ?>
 
 <div>
-    <h2>API</h2>
+    <h2>Grid API</h2>
 
     Angular Grid exposes an API for the rest of your application to interact with it.
 
@@ -150,6 +150,11 @@ include '../documentation_header.php';
             </td>
         </tr>
         <tr>
+            <th>getRenderedNodes()</th>
+            <td>Retrieve rendered nodes. Due to virtulisation this will contain only the current visible rows and the amount in the buffer.
+            </td>
+        </tr>
+        <tr>
             <th>showLoading(show)</th>
             <td>Show or hide the loading icon. Pass either true or false. If the method onNewRows
                 is called, the loading icon is automatically hidden.
@@ -228,6 +233,20 @@ include '../documentation_header.php';
                 and c) every 500ms. You should call this if something happens in your application
                 where the grid size has changed and you want to lay the grid out without waiting
                 for the next 500ms refresh.</td>
+        </tr>
+        <tr>
+            <th>getValue(colDef, data, node)</th>
+            <td>Gets the value for a cell. This is what gets passed to the cellRenderer for rendering.
+                This is useful if you want the raw value eg for csv export.</td>
+        </tr>
+        <tr>
+            <th>setGroupHeaders(value)</th>
+            <td>To set group headers (true / false) after the grid has initialised.</td>
+        </tr>
+        <tr>
+            <th>setHeaderHeight(value)</th>
+            <td>To set the header height (in pixels) after the grid has initialised. Set to null or undefined
+            to use the default.</td>
         </tr>
 
     </table>

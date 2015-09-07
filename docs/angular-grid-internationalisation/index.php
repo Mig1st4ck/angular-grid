@@ -30,6 +30,7 @@ include '../documentation_header.php';
             last: 'daLasten',
             first: 'daFirsten',
             previous: 'daPreviousen',
+            loadingOoo: 'daLoading...',
             // for set filter
             selectAll: 'daSelect Allen',
             searchOoo: 'daSearch...',
@@ -38,6 +39,7 @@ include '../documentation_header.php';
             equals: 'daEquals',
             lessThan: 'daLessThan',
             greaterThan: 'daGreaterThan',
+            applyFilter: 'daApplyFilter',
             filterOoo: 'daFilter...',
             // for text filter
             contains: 'daContains',

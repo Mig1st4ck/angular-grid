@@ -20,16 +20,27 @@ module awk.grid {
         private expressionService: ExpressionService;
         private templateService: TemplateService;
         private cellRendererMap: {[key: string]: any};
-        private renderedRows: {[key: string]: RenderedRow};
         private rowModel: any;
-        private eBodyContainer: any;
-        private eBodyViewport: any;
-        private ePinnedColsContainer: any;
-        private eParentOfRows: any;
-        private firstVirtualRenderedRow: any;
-        private lastVirtualRenderedRow: any;
+        private firstVirtualRenderedRow: number;
+        private lastVirtualRenderedRow: number;
         private focusedCell: any;
         private valueService: ValueService;
+
+        private renderedRows: {[key: string]: RenderedRow};
+        private renderedTopFloatingRows: RenderedRow[] = [];
+        private renderedBottomFloatingRows: RenderedRow[] = [];
+
+        private eAllBodyContainers: HTMLElement[];
+        private eAllPinnedContainers: HTMLElement[];
+
+        private eBodyContainer: HTMLElement;
+        private eBodyViewport: HTMLElement;
+        private ePinnedColsContainer: HTMLElement;
+        private eFloatingTopContainer: HTMLElement;
+        private eFloatingTopPinnedContainer: HTMLElement;
+        private eFloatingBottomContainer: HTMLElement;
+        private eFloatingBottomPinnedContainer: HTMLElement;
+        private eParentsOfRows: HTMLElement[];
 
         public init(columnModel: any, gridOptionsWrapper: GridOptionsWrapper, gridPanel: GridPanel,
                     angularGrid: Grid, selectionRendererFactory: SelectionRendererFactory, $compile: any, $scope: any,
@@ -49,7 +60,10 @@ module awk.grid {
             this.findAllElements(gridPanel);
 
             this.cellRendererMap = {
-                'group': groupCellRendererFactory(gridOptionsWrapper, selectionRendererFactory)
+                'group': groupCellRendererFactory(gridOptionsWrapper, selectionRendererFactory),
+                'default': function(params: any) {
+                    return params.value;
+                }
             };
 
             // map of row ids to row objects. keeps track of which elements
@@ -61,20 +75,97 @@ module awk.grid {
             this.rowModel = rowModel;
         }
 
+        public onIndividualColumnResized(column: Column) {
+            var newWidthPx = column.actualWidth + "px";
+            var selectorForAllColsInCell = ".cell-col-" + column.index;
+            this.eParentsOfRows.forEach( function(rowContainer: HTMLElement) {
+                var cellsForThisCol: NodeList = rowContainer.querySelectorAll(selectorForAllColsInCell);
+                for (var i = 0; i < cellsForThisCol.length; i++) {
+                    var element = <HTMLElement> cellsForThisCol[i];
+                    element.style.width = newWidthPx;
+                }
+            });
+        }
+
         public setMainRowWidths() {
             var mainRowWidth = this.columnModel.getBodyContainerWidth() + "px";
 
-            var unpinnedRows: [any] = this.eBodyContainer.querySelectorAll(".ag-row");
-            for (var i = 0; i < unpinnedRows.length; i++) {
-                unpinnedRows[i].style.width = mainRowWidth;
-            }
+            this.eAllBodyContainers.forEach( function(container: HTMLElement) {
+                var unpinnedRows: [any] = (<any>container).querySelectorAll(".ag-row");
+                for (var i = 0; i < unpinnedRows.length; i++) {
+                    unpinnedRows[i].style.width = mainRowWidth;
+                }
+            });
         }
 
         private findAllElements(gridPanel: any) {
             this.eBodyContainer = gridPanel.getBodyContainer();
-            this.eBodyViewport = gridPanel.getBodyViewport();
             this.ePinnedColsContainer = gridPanel.getPinnedColsContainer();
-            this.eParentOfRows = gridPanel.getRowsParent();
+
+            this.eFloatingTopContainer = gridPanel.getFloatingTopContainer();
+            this.eFloatingTopPinnedContainer = gridPanel.getPinnedFloatingTop();
+
+            this.eFloatingBottomContainer = gridPanel.getFloatingBottomContainer();
+            this.eFloatingBottomPinnedContainer = gridPanel.getPinnedFloatingBottom();
+
+            this.eBodyViewport = gridPanel.getBodyViewport();
+            this.eParentsOfRows = gridPanel.getRowsParent();
+
+            this.eAllBodyContainers = [this.eBodyContainer, this.eFloatingBottomContainer,
+                this.eFloatingTopContainer];
+            this.eAllPinnedContainers = [this.ePinnedColsContainer, this.eFloatingBottomPinnedContainer,
+                this.eFloatingTopPinnedContainer];
+        }
+
+        public refreshAllFloatingRows(): void {
+            this.refreshFloatingRows(
+                this.renderedTopFloatingRows,
+                this.gridOptionsWrapper.getFloatingTopRowData(),
+                this.eFloatingTopPinnedContainer,
+                this.eFloatingTopContainer,
+                true);
+            this.refreshFloatingRows(
+                this.renderedBottomFloatingRows,
+                this.gridOptionsWrapper.getFloatingBottomRowData(),
+                this.eFloatingBottomPinnedContainer,
+                this.eFloatingBottomContainer,
+                false);
+        }
+
+        private refreshFloatingRows(renderedRows: RenderedRow[], rowData: any[],
+                                    pinnedContainer: HTMLElement, bodyContainer: HTMLElement,
+                                    isTop: boolean): void {
+            renderedRows.forEach( (row: RenderedRow) => {
+                row.destroy();
+            });
+
+            renderedRows.length = 0;
+
+            // if no cols, don't draw row - can we get rid of this???
+            var columns = this.columnModel.getDisplayedColumns();
+            if (!columns || columns.length == 0) {
+                return;
+            }
+
+            // should we be storing this somewhere???
+            var mainRowWidth = this.columnModel.getBodyContainerWidth();
+
+            if (rowData) {
+                rowData.forEach( (data: any, rowIndex: number) => {
+                    var node: RowNode = {
+                        data: data,
+                        floating: true,
+                        floatingTop: isTop,
+                        floatingBottom: !isTop
+                    };
+                    var renderedRow = new RenderedRow(this.gridOptionsWrapper, this.valueService, this.$scope, this.angularGrid,
+                        this.columnModel, this.expressionService, this.cellRendererMap, this.selectionRendererFactory,
+                        this.$compile, this.templateService, this.selectionController, this,
+                        bodyContainer, pinnedContainer, node, rowIndex);
+                    renderedRow.setMainRowWidth(mainRowWidth);
+                    renderedRows.push(renderedRow);
+                })
+            }
         }
 
         public refreshView(refreshFromIndex?: any) {
@@ -86,6 +177,7 @@ module awk.grid {
             }
 
             this.refreshAllVirtualRows(refreshFromIndex);
+            this.refreshAllFloatingRows();
         }
 
         public softRefreshView() {
@@ -266,6 +358,13 @@ module awk.grid {
             this.renderedRows[rowIndex] = renderedRow;
         }
 
+        public getRenderedNodes() {
+            var renderedRows = this.renderedRows;
+            return Object.keys(renderedRows).map(key => {
+                return renderedRows[key].getRowNode();
+            });
+        }
+
         public getIndexOfRenderedNode(node: any): number {
             var renderedRows = this.renderedRows;
             var keys: string[] = Object.keys(renderedRows);
@@ -367,11 +466,13 @@ module awk.grid {
                 return;
             }
 
-            // remove any previous focus
-            _.querySelectorAll_replaceCssClass(this.eParentOfRows, '.ag-cell-focus', 'ag-cell-focus', 'ag-cell-no-focus');
+            this.eParentsOfRows.forEach( function(rowContainer: HTMLElement) {
+                // remove any previous focus
+                _.querySelectorAll_replaceCssClass(rowContainer, '.ag-cell-focus', 'ag-cell-focus', 'ag-cell-no-focus');
 
-            var selectorForCell = '[row="' + rowIndex + '"] [col="' + colIndex + '"]';
-            _.querySelectorAll_replaceCssClass(this.eParentOfRows, selectorForCell, 'ag-cell-no-focus', 'ag-cell-focus');
+                var selectorForCell = '[row="' + rowIndex + '"] [col="' + colIndex + '"]';
+                _.querySelectorAll_replaceCssClass(rowContainer, selectorForCell, 'ag-cell-no-focus', 'ag-cell-focus');
+            });
 
             this.focusedCell = {rowIndex: rowIndex, colIndex: colIndex, node: this.rowModel.getVirtualRow(rowIndex), colDef: colDef};
 
@@ -395,7 +496,7 @@ module awk.grid {
             var renderedRow = this.renderedRows[rowIndex];
             var column = this.columnModel.getDisplayedColumns()[colIndex];
             if (renderedRow && column) {
-                var eCell = renderedRow.getCellForCol(column.colId);
+                var eCell = renderedRow.getCellForCol(column);
                 this.focusCell(eCell, rowIndex, colIndex, column.colDef, true);
             }
         }
@@ -444,10 +545,11 @@ module awk.grid {
                     }
                 }
 
-                var nextRenderedRow = this.renderedRows[currentRowIndex];
-                var nextRenderedCell = nextRenderedRow.getRenderedCellForColumn(currentCol);
+                var nextRenderedRow: RenderedRow = this.renderedRows[currentRowIndex];
+                var nextRenderedCell: RenderedCell = nextRenderedRow.getRenderedCellForColumn(currentCol);
                 if (nextRenderedCell.isCellEditable()) {
                     nextRenderedCell.startEditing();
+                    nextRenderedCell.focusCell(false);
                     return;
                 }
             }

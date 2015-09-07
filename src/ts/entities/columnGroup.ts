@@ -8,10 +8,7 @@ module awk.grid {
         displayedColumns: Column[] = [];
         expandable = false;
         expanded = false;
-
         actualWidth: number;
-        eHeaderGroupCell: HTMLElement;
-        eHeaderCellResize: HTMLElement;
 
         constructor(pinned: any, name: any) {
             this.pinned = pinned;
@@ -54,6 +51,14 @@ module awk.grid {
             }
 
             this.expandable = atLeastOneShowingWhenOpen && atLeastOneShowingWhenClosed && atLeastOneChangeable;
+        }
+
+        public calculateActualWidth(): void {
+            var actualWidth = 0;
+            this.displayedColumns.forEach( (column: Column)=> {
+                actualWidth += column.actualWidth;
+            });
+            this.actualWidth = actualWidth;
         }
 
         public calculateDisplayedColumns() {

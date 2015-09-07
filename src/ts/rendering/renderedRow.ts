@@ -93,9 +93,16 @@ module awk.grid {
             this.addDynamicStyles();
             this.addDynamicClasses();
 
-            this.vBodyRow.setAttribute('row', this.rowIndex.toString());
+            var rowStr = this.rowIndex.toString();
+            if (this.node.floatingBottom) {
+                rowStr = 'fb-' + rowStr;
+            } else if (this.node.floatingTop) {
+                rowStr = 'ft-' + rowStr;
+            }
+
+            this.vBodyRow.setAttribute('row', rowStr);
             if (this.pinning) {
-                this.vPinnedRow.setAttribute('row', this.rowIndex.toString());
+                this.vPinnedRow.setAttribute('row', rowStr);
             }
 
             // if showing scrolls, position on the container
@@ -150,7 +157,7 @@ module awk.grid {
             });
         }
 
-        public getRenderedCellForColumn(column: Column): any {
+        public getRenderedCellForColumn(column: Column): RenderedCell {
             return this.renderedCells[column.index];
         }
 
@@ -236,21 +243,24 @@ module awk.grid {
             if (padding) {
                 eRow = document.createElement('span');
             } else {
+                var rowCellRenderer = this.gridOptionsWrapper.getGroupRowRenderer();
+                if (!rowCellRenderer) {
+                    rowCellRenderer = {
+                        renderer: 'group',
+                        innerRenderer: this.gridOptionsWrapper.getGroupRowInnerRenderer()
+                    };
+                }
                 var params = {
                     node: this.node,
                     data: this.node.data,
                     rowIndex: this.rowIndex,
                     api: this.gridOptionsWrapper.getApi(),
                     colDef: {
-                        cellRenderer: {
-                            renderer: 'group',
-                            innerRenderer: this.gridOptionsWrapper.getGroupRowInnerRenderer()
-                        }
+                        cellRenderer: rowCellRenderer
                     }
                 };
                 eRow = this.cellRendererMap['group'](params);
             }
-
             if (this.node.footer) {
                 _.addCssClass(eRow, 'ag-footer-cell-entire-row');
             } else {

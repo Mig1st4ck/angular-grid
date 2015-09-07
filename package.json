@@ -1,6 +1,6 @@
 {
   "name": "angular-grid",
-  "version": "1.12.7",
+  "version": "1.15.0",
   "description": "High performance and feature rich data grid for AngularJS",
   "main": "dist/angular-grid.min.js",
   "scripts": {
@@ -34,7 +34,7 @@
     "nib": "^1.1.0",
     "stylus": "^0.50.0",
     "vinyl-buffer": "^1.0.0",
-    "typescript": "^1.0.0",
+    "typescript": "1.5.3",
     "merge2": "0.3.6"
   }
 }

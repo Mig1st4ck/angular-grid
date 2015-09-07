@@ -134,7 +134,10 @@
     // wait for the document to be loaded, otherwise
     // Angular Grid will not find the div in the document.
     document.addEventListener("DOMContentLoaded", function() {
-        window.angularGrid('#myGrid', gridOptions);
+
+        var myAgileGrid = document.querySelector('#myAgileGrid');
+        myAgileGrid.setGridOptions(gridOptions);
+
         addQuickFilterListener();
     });
 
@@ -157,7 +160,8 @@
     function createRowData() {
         var rowData = [];
 
-        for (var i = 0; i < 10000; i++) {
+        for (var i = 0; i < 100; i++) {
+            //for (var i = 0; i < 10000; i++) {
             var countryData = countries[i % countries.length];
             rowData.push({
                 name: firstNames[i % firstNames.length] + ' ' + lastNames[i % lastNames.length],
@@ -187,7 +191,7 @@
         var skills = [];
         IT_SKILLS.forEach(function (skill) {
             if (data.skills[skill]) {
-                skills.push('<img src="/example-html5-datagrid/' + skill + '.png" width="16px" title="' + skill + '" />');
+                skills.push('<img src="/example-web-component-grid/' + skill + '.png" width="16px" title="' + skill + '" />');
             }
         });
         return skills.join(' ');
@@ -252,6 +256,9 @@
         '</div>';
 
     function SkillFilter(params) {
+    }
+
+    SkillFilter.prototype.init = function (params) {
         this.filterChangedCallback = params.filterChangedCallback;
         this.model = {
             android: false,
@@ -260,7 +267,7 @@
             mac: false,
             windows: false
         };
-    }
+    };
 
     SkillFilter.prototype.getGui = function () {
         var eGui = document.createElement('div');
@@ -325,11 +332,14 @@
     var PROFICIENCY_NAMES = ['No Filter', 'Above 40%', 'Above 60%', 'Above 80%'];
     var PROFICIENCY_VALUES = [PROFICIENCY_NONE, PROFICIENCY_ABOVE40, PROFICIENCY_ABOVE60, PROFICIENCY_ABOVE80];
 
-    function ProficiencyFilter(params) {
+    function ProficiencyFilter() {
+    }
+
+    ProficiencyFilter.prototype.init = function (params) {
         this.filterChangedCallback = params.filterChangedCallback;
         this.selected = PROFICIENCY_NONE;
         this.valueGetter = params.valueGetter;
-    }
+    };
 
     ProficiencyFilter.prototype.getGui = function () {
         var eGui = document.createElement('div');

@@ -1,6 +1,15 @@
 module awk.grid {
 
     export interface ColDef {
+        /** If sorting by default, set it here. Set to 'asc' or 'desc' */
+        sort?: string;
+
+        /** If sorting more than one column by default, the milliseconds when this column was sorted, so we know what order to sort the columns in. */
+        sortedAt?: number;
+
+        /** The sort order, provide an array with any of the following in any order ['asc','desc',null] */
+        sortingOrder?: string[];
+
         /** The name to render in the column header */
         headerName: string;
 
@@ -25,7 +34,10 @@ module awk.grid {
         valueGetter?: string | Function;
 
         /** To provide custom rendering to the header. */
-        headerCellRenderer?: Function;
+        headerCellRenderer?: Function | Object;
+
+        /** CSS class for the header */
+        headerClass?: (params: any) => any | string[];
 
         /** Initial width, in pixels, of the cell */
         width?: number;
@@ -44,6 +56,9 @@ module awk.grid {
 
         /** A function for rendering a cell. */
         cellRenderer?: Function | {};
+
+        /** A function for rendering a floating cell. */
+        floatingCellRenderer?: Function | {};
 
         /** Function callback, gets called when a cell is clicked. */
         cellClicked?: Function;

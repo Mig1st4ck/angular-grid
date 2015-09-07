@@ -18,8 +18,12 @@ include 'documentation_header.php';
                 frameborder="0" scrolling="0" width="160px" height="30px">
         </iframe>
     </div>
-    <div style="text-align: center; font-weight: bold; font-size: 22px;">
-        Show your support, star Angular Grid on Github
+    <div style="text-align: center; font-size: 22px;">
+        Show your support, star
+            <span style="font-family: Impact, Charcoal, sans-serif; padding-left: 6px; padding-right: 6px;">
+                <span style="color: darkred;">ag</span><span style="color: #404040;">-Grid</span>
+            </span>
+        on Github
     </div>
 </div>
 
@@ -27,33 +31,49 @@ include 'documentation_header.php';
      xmlns="http://www.w3.org/1999/html">
 
     <p>
-        <b>26th July 2015</b>
+        <b>30th Aug 2015 <!--- Over 800 stars on Github and counting!!--></b>
     </p>
+
+    <p>&nbsp;</p>
 
     <p>
         <b>Last Week</b>
     </p>
 
+    <ul>
+
+        <li>
+            <b>Floating Headers and Footers:</b> Finally it's here!!! One of the most asked for features, floating
+            rows for the top and bottom of your grids!!! Read all about it
+            <a href="/angular-grid-floating/index.php">here</a>.
+        </li>
+
+    </ul>
+
     <p>
-        <ul>
-            <li>
-                Introduced minWidth and maxWidth for columns.
-            </li>
-            <li>
-                Chaining of cell expressions via getValue() method. Explained <a href="angular-grid-value-getters/index.php">here</a>.
-            </li>
-            <li>
-                Other minor bug fixes.
-            </li>
-        </ul>
-    Release 1.12.4 contains all the above.
+        And then the usual bug fixes as per Github and board chatter. If you want to see exactly, check out
+        Github history.
     </p>
+    <p>
+        Release 1.15 contains the above.
+    </p>
+
+    <p>&nbsp;</p>
 
     <p>
         <b>Next Week</b>
     </p>
     <p>
-        Next week I'll be continuing to work through the issues in Gibhub.
+        I'm going to continue with my Angular 2 and Web Components research. Oh - and I'm probably going to
+        implement a 'size grid to fit' soon - so the grid will size to the number of rows you have showing.
+    </p>
+
+    <p>
+        <b>Angular Air</b>
+    </p>
+    <p>
+        On Tuesday 15th September I will be on <a href="http://angular-air.com/">Angular Air</a> talking about
+        my work with ag-Grid.
     </p>
 
     <a href="https://twitter.com/angularGrid" class="twitter-follow-button" data-show-count="false" data-size="large">Follow @angularGrid</a>
@@ -218,6 +238,24 @@ include 'documentation_header.php';
     <h3>
         News
     </h3>
+
+    <hr/>
+
+    <p>
+        <b>31th Aug</b> Column API, External Filtering, Excel Like Filtering
+    </p>
+
+    <hr/>
+
+    <p>
+        <b>16th Aug</b> Master & Slave Grids.
+    </p>
+
+    <hr/>
+
+    <p>
+        <b>26th July</b> minWidth and maxWidth for columns. Chaining of cell expressions.
+    </p>
 
     <hr/>
 
