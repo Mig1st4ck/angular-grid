@@ -3,7 +3,7 @@
 module awk.grid {
 
     export interface GridOptions {
-        expandedRowsDefault?: number;
+        expandedRowsDefault?(node: any): number;
         rowSelection?: string;
         rowDeselection?: boolean;
         context?: any;
